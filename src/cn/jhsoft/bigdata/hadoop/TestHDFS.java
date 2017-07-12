@@ -1,6 +1,7 @@
 package cn.jhsoft.bigdata.hadoop;
 
 import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.fs.BlockLocation;
 import org.apache.hadoop.fs.FileStatus;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.LocatedFileStatus;
@@ -11,6 +12,7 @@ import org.junit.Test;
 
 import java.io.IOException;
 import java.net.URI;
+import java.util.Arrays;
 import java.util.Iterator;
 import java.util.Map;
 
@@ -75,6 +77,15 @@ public class TestHDFS {
         while (files.hasNext()){
             LocatedFileStatus lfs = files.next();
             System.out.println(lfs.getPath().getName());
+            // 取块信息
+            BlockLocation[] blockLocations = lfs.getBlockLocations();
+            for (BlockLocation b : blockLocations){
+                System.out.println("块名称："+ Arrays.toString(b.getNames()));
+                System.out.println("块起始偏移量："+b.getOffset());
+                System.out.println("块长度："+b.getLength());
+                System.out.println("块(datanode)所在服务器："+ Arrays.toString(b.getHosts()));
+            }
+
         }
         fs.close();
     }

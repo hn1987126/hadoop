@@ -178,8 +178,14 @@ scp /etc/sudoers s4:/etc/
 
 ######修改主机名,这一步是必须的，不然的话hadoop启动datanode会出错
 vi /etc/sysconfig/network   分别改为s1,s2,s3,s4
-hostname s4
+这个是指临时修改 hostname s4
 再用hostname查看，或用uname -n 查看
+还有要在每台机器上/etc/hosts里加上：
+192.168.80.128 s1
+192.168.80.129 s2
+192.168.80.130 s3
+192.168.80.131 s4
+注意原来默认的127.0.0.1 localhost那一段需要删除掉，不然取主机名还是会得到localhost
 
 ############### 下载hadoop
 http://archive.apache.org/dist/   这是apache所有软件的各版本归档的地址
