@@ -7,6 +7,13 @@ cd -  是回到上次的目录
 . /bin/bash install.sh
 #### 查看目录或文件所占空间单位智能化显示
 du -sh *
+#### tree 目录名   可以看他下面的所有子目录和文件，树状显示
+tree /home/hadoop
+需要yum -y install tree
+#### linux查找，比如查找hadoop安装在哪了
+find / -name "hadoop"
+#### 批量查看某目录下所有子目录和子子目录
+ll -R hdpdata    会列出hdpdata下的所有子目录和子子目录。
 
 #### keepalived 虚拟IP,实现高可用，管nginx集群的
 
@@ -15,7 +22,7 @@ vi /etc/profile
 export JAVA_HOME=/usr/local/java
 export PATH=$PATH:$JAVA_HOME/bin
 
-####文件操作： 
+####文件操作：
 取环境变量，用:隔开，取第一列，-f 1,3是取1和3列
 echo $PATH | cut -d ':' -f 1
 排序：用":"分隔，按第3列排序,这是按字符中排，如果是数字排则加n,-k 3n,如果要倒序排 -k 3nr
@@ -32,7 +39,7 @@ wc -l /etc/passwd  统计行数
 wc -m /etc/passwd  统计文件字符数
 
 #### sed执行命令操作，主要是对vi里面的吧
-sed '2d' a.txt   删除a.txt的第二行，但是a.txt不变，只是把执行后的结果，删除第二行后，a.txt的结果，输出来。 
+sed '2d' a.txt   删除a.txt的第二行，但是a.txt不变，只是把执行后的结果，删除第二行后，a.txt的结果，输出来。
 
 #### awk
 last -n 5  显示最后登录的5个人
@@ -94,8 +101,8 @@ cd conf
 cp zoo_sample.cfg zoo.cfg
 vi zoo.cfg   修改dataDir为 /root/zkdata
 在zoo.cfg中新加：
-server.1=s1:2888:3888      
-server.2=s2:2888:3888     
+server.1=s1:2888:3888
+server.2=s2:2888:3888
 server.3=s3:2888:3888
 #2888是leder和foller通讯的端口，3888是投票端口
 mkdir -p /root/zkdata
@@ -131,7 +138,7 @@ get /app1   能看到app1的文件内容及metedata信息(czxid,,mzxid,pzxid等�
 set /app1/server1 hahaha   设置内容
 del /app1/server1   删除节点，如果还有子节点则不让删
 rmr /app1     删除app1和他的所有子节点递归
- 
+
 ######## 通过ssh去另外一台机器执行命令
 ssh s2 mkdir /root/test
 # 远程启动服务
@@ -216,6 +223,12 @@ vim yarn-site.xml
 <name>dfs.secondary.http.address</name>
 <value>s1:50090</value>
 </property>
+<!--设置hdfs的namenode在多块磁盘上，每个同完全相同的东西，这个不是必须的。-->
+<!--datanode也可以指定多块磁盘，设置dfs.data.dir属性，往不同的地方存，并发时效率高，各个磁盘并不存相同的东西，只是为了方便写操作-->
+<property>
+<name>dfs.name.dir</name>
+<value>/home/hadoop/name1,/home/hadoop/name2</value>
+</property>
 
 
 mv mapred-site.xml.example vim mapred-site.xml
@@ -283,7 +296,7 @@ namenode机器上jps查看，有namenode,还有个secondaryNameNode(这个就是
 而datanode机器上jps查看只有datanode
 
 #批量启动：
-sbin/start-all.sh起所有(不建议)   start-dsf.sh只起dsf     start-yarn.sh只起yarn     
+sbin/start-all.sh起所有(不建议)   start-dsf.sh只起dsf     start-yarn.sh只起yarn
 批量启动哪些？在etc/hadoop/slaves中，这文件纯粹是给批量启动用的
 vim slaves里加入（默认里面有个localhost，把这个去掉，改成底下的）
 s2
@@ -300,12 +313,13 @@ sbin/yarn-daemon.sh start nodemanager
 
 
 ##### hadoop shell命令操作
-hadoop fs -ls /     查看
+hadoop fs -ls /     查看   或者  hdfs dfs -ls /
 hadoop fs -put 1.txt /     上传到hdfs的根目录下
 hadoop fs -get /1.txt      下载文件保存到当前目录下
 hadoop fs -cat /1.txt      读取文件根目录下的1.txt
 hadoop fs -mkdir -p /wordcount/input   在根目录下创建一个二级目录
 hadoop fs -put a.txt b.txt /wordcount/input     上传多个文件
+hdfs dfsadmin -report     查看datanode节点的情况，跟在s1:9000这个web上看到的是一样的，但会比他更实时准确
 其他命令：
 moveFromLocal 从本地剪切到hdfs  moveFromLocal a.txt /hd/
 moveToLocal  从hdfs剪切到本地  moveToLocal /hd/a.txt /home/hadoop
@@ -326,3 +340,25 @@ hadoop jar /home/hadoop/apps/hadoop-2.6.4/share/hadoop/mapreduce/hadoop-mapreduc
 --其中wordcount是要执行的这个包里的方法名，这方法需要两参数：输入和输出，要求output这个目录不存在，要是存在的话会报错
 可以查看计算的结果
 hadoop fs -cat /wordcount/output/part-r-00000
+
+
+################### 讲解NameNode和SecondaryNameNode的关系
+首先明白两个概念：
+1、edits是记录操作日志的
+2、fsimage是内存落盘到的目录，也就是镜像文件。
+应该定期把edits和fsimage合并一下，生成新的fsimage，这样以后合并的时候不至于特别慢。
+合并完后，要删掉edits或至少只留下未合并的edits。
+正在写的edits是edits_inprogress，非inprogress的edits是非正在写的。
+这个事不能在namenode上去做，而是要在secondnameNode上做。
+namenode会定期(默认是30分钟)或edits到达一定的量时，会发请求给secondnameName，让他来合并。
+secondnamenode会把namenode里的fsimage和一大堆edits下载到他所在的机器，
+加载fsimage到内存，根据元数据生成的算法，在内存中重放一遍，再把内存dump到fsimage.chkpoint中。
+上传到namenode服务器，并请求覆盖原来的fsimage（rename fsimage.checkpoint为fsimage）
+
+########
+hdpdata目录下的dfs有两个子目录，name和namesecondary，如果name被删除了，也可以拿namesecondary复制一份命名为name，也可以再用，只是会丢失一些最新的没来的及落盘的数据。
+
+###########datanode的默认超时时间是10分30秒。(掉线或kill掉namenode)
+由这两参数确定heartbeat.recheck.interval 默认为5分钟，里面是存毫秒单位
+dfs.heartbeat.interval  默认为3，存的是秒单位
+超时时间的计算公式是 2*heartbeat.recheck.interval + 10*dfs.heartbeat.interval
