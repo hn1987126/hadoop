@@ -1,0 +1,2 @@
+git remote add origin git@github.com:hn1987126/hadoop.git
+git push -u origin master

@@ -1,0 +1,328 @@
+1、linux的两个命令：
+#### 重启网络
+/etc/rc.d/init.d/network restart
+#### 小技巧
+cd -  是回到上次的目录
+#### 执行脚本前加上"."代表在当前进程执行如
+. /bin/bash install.sh
+#### 查看目录或文件所占空间单位智能化显示
+du -sh *
+
+#### keepalived 虚拟IP,实现高可用，管nginx集群的
+
+####添加环境变量：
+vi /etc/profile
+export JAVA_HOME=/usr/local/java
+export PATH=$PATH:$JAVA_HOME/bin
+
+####文件操作： 
+取环境变量，用:隔开，取第一列，-f 1,3是取1和3列
+echo $PATH | cut -d ':' -f 1
+排序：用":"分隔，按第3列排序,这是按字符中排，如果是数字排则加n,-k 3n,如果要倒序排 -k 3nr
+cat /etc/passwd | sort -t ':' -k 3
+
+uniq 是去重，但一般是跟sort联合用，因为他只能作用于排好序的情况
+cat /etc/passwd | sort | uniq
+cat /etc/passwd | sort | uniq -c   能统计出重复的次数，结果为
+1 admin
+2 mysql
+
+wc -w /etc/passwd  统计单词出现次数，空隔隔开的算
+wc -l /etc/passwd  统计行数
+wc -m /etc/passwd  统计文件字符数
+
+#### sed执行命令操作，主要是对vi里面的吧
+sed '2d' a.txt   删除a.txt的第二行，但是a.txt不变，只是把执行后的结果，删除第二行后，a.txt的结果，输出来。 
+
+#### awk
+last -n 5  显示最后登录的5个人
+last -n 5 | awk '{print $1}'    取第一列，默认以空隔来作为列分隔符
+last -n 5 | awk -F ':' '{print $1}'   取第一列，以:为分隔符
+
+
+########## 自动化部署脚本：带人机交互，ssh免密登录，输入密码。
+# yum -y install expect    人机交互需要yum这个包
+boot.sh   内容如下：
+#!/bin/bash
+SERVERS="s2 s3 s4"
+PASSWORD=iloveme
+BASE_SERVER=s1
+auto_ssh_copy_id() {
+    expect -c "set timeout -1;
+        spawn ssh-copy-id $1;
+        expect {
+            *(yes/no)* {send -- yes\r;exp_continue;}
+            *assword:* {send -- $2\r;exp_continue;}
+            eof        {exit 0;}
+        }";
+}
+ssh_copy_id_to_all() {
+    for SERVER in $SERVERS
+    do
+        auto_ssh_copy_id $SERVER $PASSWORD
+    done
+}
+ssh_copy_id_to_all
+for SERVER in $SERVERS
+do
+    scp install.sh root@$SERVER:/root
+    ssh root@$SERVER /bin/bash /root/install.sh
+done
+
+install.sh内容如下：
+#!/bin/bash
+BASE_SERVER=s1
+
+#cat >> /etc/profile << EOF
+#export JAVA_HOME=/usr/local/jdk1.7.0_45
+#export PATH=\$PATH:\$JAVA_HOME/bin
+#EOF
+
+
+############ rz、sz需要的yum包
+yum install lrzsz
+
+############ zookeeper安装
+cd /root/soft
+tar -vxzf zookeeper-3.4.5.tar.gz
+cd /root
+mkdir apps
+mv soft/zookeeper-3.4.5 apps
+cd /root/apps/zookeeper-3.4.5
+rm -rf src/ *.xml *.txt docs dist-maven
+cd conf
+cp zoo_sample.cfg zoo.cfg
+vi zoo.cfg   修改dataDir为 /root/zkdata
+在zoo.cfg中新加：
+server.1=s1:2888:3888      
+server.2=s2:2888:3888     
+server.3=s3:2888:3888
+#2888是leder和foller通讯的端口，3888是投票端口
+mkdir -p /root/zkdata
+cd /root/zkdata
+echo 1 >myid
+---------------拷到其他机器中
+cd /root/
+scp -r apps/ s2:/root
+在其他机器上:
+cd /root
+mkdir zkdata
+echo 2 >zkdata/myid
+
+启动服务
+/root/apps/zookeeper-3.4.5/bin/zkServer.sh start
+查看自己是不是leader
+/root/apps/zookeeper-3.4.5/bin/zkServer.sh status
+必须要里面显示leader或follower才证明是成功
+
+
+#关防火墙
+/etc/init.d/iptables stop
+chkconfig iptables off
+
+#### zookeeper怎么用：？
+/root/apps/zookeeper-3.4.5/bin/zkCli.sh  进入命令行
+ls /  查看所有节点
+create /app1 "jiedianneirong"    创建持久的节点，如果加-e(create -e xxx)是创建临时节点。如果加-s参数，则在节点名字后自动加了个编号序号如创建app1，得最终的节点名是app1000000001这样的。
+ls /  就能看到app1了
+create /app1/server1 server1neirong
+ls /app1   就能看到server1了
+get /app1   能看到app1的文件内容及metedata信息(czxid,,mzxid,pzxid等内部事务号，版本号等)
+set /app1/server1 hahaha   设置内容
+del /app1/server1   删除节点，如果还有子节点则不让删
+rmr /app1     删除app1和他的所有子节点递归
+ 
+######## 通过ssh去另外一台机器执行命令
+ssh s2 mkdir /root/test
+# 远程启动服务
+ssh s2 "source /etc/profile;/root/apps/zookeeper-3.4.5/bin/zkServer.sh start"
+# jps查看是否启动了zookeeper
+输入jps  如果出现QuorumPeerMain 则代表启动了，没有则没启动
+
+######## 批量启动zookeeper脚本：startzk.sh
+#!bin/sh
+echo "start zkServer..."
+for i in 1 2 3
+do
+ssh s$i "source /etc/profile ; /root/apps/zookeeper-3.4.5/bin/zkServer.sh start"
+done
+
+
+
+################  大数据
+#### flume 日志往hadoop里写的工具
+#### sqoop hive里的数据导入到mysql中，或mysql到hive，互导的工具
+#### oozie 任务调度，训象师
+
+################ 大数据环境搭建：
+首先在s1,s2,s3,s4上批量新建hadoop用户
+groupadd hadoop
+useradd hadoop -g hadoop
+passwd hadoop
+
+给hadoop用户加sudo权限（今后就可以用sudo加原本的命令执行所有root的权限）
+修改/etc/sudoers 这文件，加一行
+hadoop  ALL=(ALL)       ALL
+然后scp拷到各台机器
+scp /etc/sudoers s2:/etc/
+scp /etc/sudoers s3:/etc/
+scp /etc/sudoers s4:/etc/
+然后可以这样执行了 sudo hostname
+
+######修改主机名,这一步是必须的，不然的话hadoop启动datanode会出错
+vi /etc/sysconfig/network   分别改为s1,s2,s3,s4
+hostname s4
+再用hostname查看，或用uname -n 查看
+
+############### 下载hadoop
+http://archive.apache.org/dist/   这是apache所有软件的各版本归档的地址
+点hadoop进去，再点common是hadoop的各个版本包
+注意：hadoop-src是指源码包，可以下载下来编译。
+也可以直接用别人编译好的包。
+
+############### 解压并修改配置文件
+把hadoop-2.6.4.tar.gz包放在hadoop 这个用户的根目录下。
+cd /home/hadoop
+mkdir apps
+tar -vxzf hadoop-2.6.4.tar.gz -C apps
+cd apps/hadoop-2.6.4
+rm -rf share/doc/*
+cd etc/hadoop
+#修改配置文件，一共4个
+vim hadoop-env.sh   修改里面有个export JAVA_HOME 把他修改成自己的jdk目录
+vim core-site.xml   核心配置
+vim hdfs-site.xml
+vim mapred-site.xml.example
+vim yarn-site.xml
+
+在core-site.xml中<configuration>里加入：
+<property>
+<name>fs.defaultFS</name>
+<value>hdfs://s1:9000</value>
+</property>
+<property>
+<name>hadoop.tmp.dir</name>
+<value>/home/hadoop/hdpdata</value>
+</property>
+
+
+在hdfs-site.xml中<configuration>里加入：
+<property>
+<name>dfs.replication</name>
+<value>2</value>
+</property>
+<!--这是为了启动secondaryNameNode时，不从0.0.0.0(本机)上起，从那上起会很慢-->
+<property>
+<name>dfs.secondary.http.address</name>
+<value>s1:50090</value>
+</property>
+
+
+mv mapred-site.xml.example vim mapred-site.xml
+<property>
+<name>mapreduce.framework.name</name>
+<value>yarn</value>
+</property>
+
+在yarn-site.xml中<configuration>里加入：
+<property>
+<name>yarn.resourcemanager.hostname</name>
+<value>s1</value>
+</property>
+<property>
+<name>yarn.nodemanager.aux-services</name>
+<value>mapreduce_shuffle</value>
+</property>
+
+#将hadoop添加到环境变量：
+sudo vim /etc/profile
+export HADOOP_HOME=/home/hadoop/apps/hadoop-2.6.4
+export PATH=$PATH:$JAVA_HOME/bin:$HADOOP_HOME/bin:$HADOOP_HOME/sbin
+拷到其他机器
+sudo scp /etc/profile s2:/etc/
+sudo scp /etc/profile s3:/etc/
+sudo scp /etc/profile s4:/etc/
+
+
+#格式化namenode
+hadoop namenode -format
+怎样算格式化成功呢？
+-执行完的时候有提示 /home/hadoop/hdpdata/dfs/name has been successfully formatted.
+
+#启动：
+/home/hadoop/apps/hadoop-2.6.4/sbin/hadoop-daemon.sh start namenode
+也可以直接hadoop-daemon.sh start namenode ,因为已经加了环境变量把sbin加进去了
+然后用jps查看看是否有NameNode
+通过网页访问(hadoop里内置了一个小的web应用服务器[jetty服务器]，他的默认端口是50070,http://s1:50070)
+查看当前有多少空间，通过点击上方的overview标签查，地址为http://s1:50070/dfshealth.html#tab-overview
+
+
+#####hadoop用户的免密登录
+ssh-kengen
+ssh-copy-id -i ~/.ssh/id_rsa.pub s1
+ssh-copy-id -i ~/.ssh/id_rsa.pub s2
+ssh-copy-id -i ~/.ssh/id_rsa.pub s3
+ssh-copy-id -i ~/.ssh/id_rsa.pub s4
+
+#把hadoop放到其他机器
+cd /home/hadoop
+tar -vczf apps.tar.gz apps
+scp /home/hadoop/apps.tar.gz s2:/home/hadoop
+ssh s2 tar -vxzf /home/hadoop/apps.tar.gz
+scp /home/hadoop/apps.tar.gz s3:/home/hadoop
+ssh s3 tar -vxzf /home/hadoop/apps.tar.gz
+scp /home/hadoop/apps.tar.gz s4:/home/hadoop
+ssh s4 tar -vxzf /home/hadoop/apps.tar.gz
+
+#启动datanode，在其他机器上
+hadoop-daemon.sh start datanode
+hadoop-daemon.sh stop datanode  停止服务
+#其他机器的datanode是怎么跟本机的namenode握手的呢？是因为hadoop目录连同配置文件一起拷过去了，他们都认识namenode为s1
+日志文件是在：/home/hadoop/apps/hadoop-2.6.4/logs/目录下的 那个.log文件，而不是.out文件
+namenode机器上jps查看，有namenode,还有个secondaryNameNode(这个就是想本机的0.0.0.0,这个慢，也可以在hdfs-site.xml中加dfs.secondary.http.address这个属性为s1:50090)
+而datanode机器上jps查看只有datanode
+
+#批量启动：
+sbin/start-all.sh起所有(不建议)   start-dsf.sh只起dsf     start-yarn.sh只起yarn     
+批量启动哪些？在etc/hadoop/slaves中，这文件纯粹是给批量启动用的
+vim slaves里加入（默认里面有个localhost，把这个去掉，改成底下的）
+s2
+s3
+s4
+
+#批量停止
+sbin/stop-dsf.sh
+
+#启动yarn
+sbin/yarn-daemon.sh start resourcemanager
+其他机器
+sbin/yarn-daemon.sh start nodemanager
+
+
+##### hadoop shell命令操作
+hadoop fs -ls /     查看
+hadoop fs -put 1.txt /     上传到hdfs的根目录下
+hadoop fs -get /1.txt      下载文件保存到当前目录下
+hadoop fs -cat /1.txt      读取文件根目录下的1.txt
+hadoop fs -mkdir -p /wordcount/input   在根目录下创建一个二级目录
+hadoop fs -put a.txt b.txt /wordcount/input     上传多个文件
+其他命令：
+moveFromLocal 从本地剪切到hdfs  moveFromLocal a.txt /hd/
+moveToLocal  从hdfs剪切到本地  moveToLocal /hd/a.txt /home/hadoop
+appendToFile 追加一个文件到hdfs某个文件的末尾
+getmerge     合并hdfs里的文件
+rm           删除文件或文件夹
+hadoop fs -du -s -h hdfs://s1:9000/*   统计文件夹的大小信息
+hadoop fs -count /aaa/               统计指定目录下的文件节点数量
+hadoop fs -setrep 3 /1.txt           改变a.txt这个文件的副本数（默认2个，在配置文件里配置的2个）
+
+## hadoop目录所在：
+cd /home/hadoop/hdpdata/dfs/data/current/BP-xxxxx/current/finalized/subdir0/subdir0 这样的目录下
+的 blk_xxx文件，默认128M才会切成多个块，可以直接cat blk_xxx来查看刚才保存的1.txt的内容。
+同时在其他机器上也有这样的文件。
+
+#### 执行mapreduce去统计单词wordcount
+hadoop jar /home/hadoop/apps/hadoop-2.6.4/share/hadoop/mapreduce/hadoop-mapreduce-examples-2.6.4.jar wordcount /wordcount/input /wordcount/output
+--其中wordcount是要执行的这个包里的方法名，这方法需要两参数：输入和输出，要求output这个目录不存在，要是存在的话会报错
+可以查看计算的结果
+hadoop fs -cat /wordcount/output/part-r-00000
