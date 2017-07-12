@@ -187,7 +187,6 @@ vi /etc/sysconfig/network   分别改为s1,s2,s3,s4
 192.168.80.131 s4
 注意原来默认的127.0.0.1 localhost那一段需要删除掉，不然取主机名还是会得到localhost
 
-
 ############### 下载hadoop
 http://archive.apache.org/dist/   这是apache所有软件的各版本归档的地址
 点hadoop进去，再点common是hadoop的各个版本包
@@ -369,3 +368,4 @@ hdpdata目录下的dfs有两个子目录，name和namesecondary，如果name被�
 由这两参数确定heartbeat.recheck.interval 默认为5分钟，里面是存毫秒单位
 dfs.heartbeat.interval  默认为3，存的是秒单位
 超时时间的计算公式是 2*heartbeat.recheck.interval + 10*dfs.heartbeat.interval
+
