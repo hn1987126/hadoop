@@ -5,3 +5,4 @@ firestorm.log*
 /logs
 /out
 .DS_Store
+*.bak
