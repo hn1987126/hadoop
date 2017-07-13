@@ -369,4 +369,21 @@ hdpdata目录下的dfs有两个子目录，name和namesecondary，如果name被�
 dfs.heartbeat.interval  默认为3，存的是秒单位
 超时时间的计算公式是 2*heartbeat.recheck.interval + 10*dfs.heartbeat.interval
 
+########### hadoop开发要引入的包
+我把从apache官网上下载下来的hadoop包里的share/hadoop目录拷贝出来到跟项目平级的目录叫 lib_hadoop
+在idea工具中，File->Project Structure里Libraies中加入jar包，有如下是需要加入的：
+1、lib_hadoop/common目录里的hadoop-common-2.6.4.jar  及它底下lib里的所有。
+2、lib_hadoop/hdfs目录里的hadoop-hdfs-2.6.4.jar  及它底下lib里的所有。
+3、lib_hadoop/mapreduce目录里的除hadoop-mapreduce-examples-2.6.4.jar之外的所有  及它底下lib里的所有。
+4、lib_hadoop/yarn目录里的除包含server之外的所有  及它底下lib里的所有。
 
+########### 用程序实现统计单词（MapReduces）
+在服务器上任意s1,s2,s3,s4上执行：
+hadoop fs -mkdir -p /wordcount/input
+# 把这几个现成的文件上传到hdfs
+cd /home/hadoop/apps/hadoop-2.6.4
+hadoop fs -put NOTICE.txt LICENSE.txt README.txt /wordcount/input
+# 执行打好包的jar   java -cp jar包名 主类名 参数1 参数2（参数是在主类main中指定要接收的参数）
+java -cp wordcount.jar cn.jhsoft.bigdata.hadoop.mr.wcdemo.WordcountDriver /wordcount/input /wordcount/output
+#但是上面这样执行，如果wordcount.jar里没包含hadoop那一大堆包的话，就会报错，需要下面这样执行.它会把所有hadoop依赖包含进来。
+hadoop jar wordcount.jar cn.jhsoft.bigdata.hadoop.mr.wcdemo.WordcountDriver /wordcount/input /wordcount/output
