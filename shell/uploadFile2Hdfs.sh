@@ -51,6 +51,10 @@ do
 	fi
 	
 done
+
+echo "在hdfs上创建"${hdfs_root_dir}"目录"
+hadoop fs -mkdir -p $hdfs_root_dir
+
 #找到列表文件willDoing
 ls $log_toupload_dir | grep will |grep -v "_COPY_" | grep -v "_DONE_" | while read line
 do
@@ -60,8 +64,6 @@ do
 	mv $log_toupload_dir$line $log_toupload_dir$line"_COPY_"
 	#读列表文件willDoing_COPY_的内容（一个一个的待上传文件名）  ,此处的line 就是列表中的一个待上传文件的path
 	cat $log_toupload_dir$line"_COPY_" |while read line
-	echo "mkdir -p"
-	hadoop fs -mkdir -p $hdfs_root_dir
 	do
 		#打印信息
 		echo "puting...$line to hdfs path.....$hdfs_root_dir"

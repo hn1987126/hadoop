@@ -369,3 +369,4 @@ hdpdata目录下的dfs有两个子目录，name和namesecondary，如果name被�
 dfs.heartbeat.interval  默认为3，存的是秒单位
 超时时间的计算公式是 2*heartbeat.recheck.interval + 10*dfs.heartbeat.interval
 
+
