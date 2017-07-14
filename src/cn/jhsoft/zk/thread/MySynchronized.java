@@ -1,6 +1,7 @@
 package cn.jhsoft.zk.thread;
 
 /**
+ * synchronized 同步代码块，一个时间内只能有一个线程得到执行。另一个线程必须等待当前线程执行完这个代码块以后才能执行该代码块
  * Created by chen on 2017/7/9.
  */
 public class MySynchronized {

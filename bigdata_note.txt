@@ -14,6 +14,9 @@ tree /home/hadoop
 find / -name "hadoop"
 #### 批量查看某目录下所有子目录和子子目录
 ll -R hdpdata    会列出hdpdata下的所有子目录和子子目录。
+################# 特别好的小技巧，命令行里想让光标一次移动一个单词，可以设置一下.bashrc文件，这文件在每个用户的根目录下。
+vi ~/.bashrc  在里面加入一行     set -o vi    即可，这时想按B和W把光标移到一个单词，可以按ESC，如果想切回，再按下ESC即可。
+编辑完后需要执行下   source ~/.bashrc   使改变立即生效。
 
 #### keepalived 虚拟IP,实现高可用，管nginx集群的
 
@@ -370,16 +373,17 @@ dfs.heartbeat.interval  默认为3，存的是秒单位
 超时时间的计算公式是 2*heartbeat.recheck.interval + 10*dfs.heartbeat.interval
 
 ########### hadoop开发要引入的包
-我把从apache官网上下载下来的hadoop包里的share/hadoop目录拷贝出来到跟项目平级的目录叫 lib_hadoop
+我把从apache官网上下载下来的hadoop包里的share/hadoop目录拷贝出来到跟项目平级的目录叫 lib_third
 在idea工具中，File->Project Structure里Libraies中加入jar包，有如下是需要加入的：
-1、lib_hadoop/common目录里的hadoop-common-2.6.4.jar  及它底下lib里的所有。
-2、lib_hadoop/hdfs目录里的hadoop-hdfs-2.6.4.jar  及它底下lib里的所有。
-3、lib_hadoop/mapreduce目录里的除hadoop-mapreduce-examples-2.6.4.jar之外的所有  及它底下lib里的所有。
-4、lib_hadoop/yarn目录里的除包含server之外的所有  及它底下lib里的所有。
+1、lib_third/hadoop/common目录里的hadoop-common-2.6.4.jar  及它底下lib里的所有。
+2、lib_third/hadoop/hdfs目录里的hadoop-hdfs-2.6.4.jar  及它底下lib里的所有。
+3、lib_third/hadoop/mapreduce目录里的除hadoop-mapreduce-examples-2.6.4.jar之外的所有  及它底下lib里的所有。
+4、lib_third/hadoop/yarn目录里的除包含server之外的所有  及它底下lib里的所有。
 
 ########### 用程序实现统计单词（MapReduces）
 在服务器上任意s1,s2,s3,s4上执行：
 hadoop fs -mkdir -p /wordcount/input
+hadoop fs -rm -r /wordcount/output  需要删除output，不然会报错
 # 把这几个现成的文件上传到hdfs
 cd /home/hadoop/apps/hadoop-2.6.4
 hadoop fs -put NOTICE.txt LICENSE.txt README.txt /wordcount/input
@@ -387,3 +391,12 @@ hadoop fs -put NOTICE.txt LICENSE.txt README.txt /wordcount/input
 java -cp wordcount.jar cn.jhsoft.bigdata.hadoop.mr.wcdemo.WordcountDriver /wordcount/input /wordcount/output
 #但是上面这样执行，如果wordcount.jar里没包含hadoop那一大堆包的话，就会报错，需要下面这样执行.它会把所有hadoop依赖包含进来。
 hadoop jar wordcount.jar cn.jhsoft.bigdata.hadoop.mr.wcdemo.WordcountDriver /wordcount/input /wordcount/output
+
+############ MapReduces分区，也就是结果按不同的要求生成统计结果
+MapReduces里有个组件叫Partition，他是负责Map Task跑的时候，哪些单词进哪个分区，（后面一步就是分区里的进Reduces）
+他的默认实现原理是，把key也就是单词进行hashCode再取模。取模是有几个Reduces就 %几，这样保证一个Reduces得到一个分区。
+如果流量统计项目中，结果想按省来分出不同的输出结果，或者说在单词统计项目中，想要A-F一个统计文件，F-G一个文件，就需要对Partition组件进行重写。
+
+#### MapReduces其他
+number of split : 3 是指map有三个切片。其实大概就是 /wordcount/input里有几个文件大概就是几个切片。当然还得根据minBlock和maxBlock来。
+MapReduces可以通过web页面来查看他的执行情况：http://s1:8088/

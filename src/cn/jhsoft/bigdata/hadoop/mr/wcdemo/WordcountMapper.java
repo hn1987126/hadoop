@@ -14,6 +14,7 @@ import java.io.IOException;
  * 第二个  VALUEIN，  所取到的那一行的文本内容  String也就是Text类型
  * 第三个  KEYOUT,    map处理完成后，输出数据中的key，在本类中是指单词，String也就是Text类型
  * 第四个  VALUEOUT,   map处理完成后输出到数据中的value，本类中是指单词的次数，IntWritable类型
+ * LongWritable, Text, Text, IntWritable 这几个都是序列化的数据类型，他们都实现了Writable接口
  *
  * Created by chen on 2017/7/13.
  */

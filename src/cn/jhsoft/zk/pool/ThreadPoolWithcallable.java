@@ -4,6 +4,7 @@ import java.net.Socket;
 import java.util.concurrent.*;
 
 /**
+ * 固定线程数量的线程池
  * Created by chen on 2017/7/9.
  */
 public class ThreadPoolWithcallable {
