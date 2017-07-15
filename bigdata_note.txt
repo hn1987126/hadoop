@@ -415,3 +415,11 @@ Combiner组件的任务是在使这样的生成，进行合并，如<a,3>,<b,2>�
 这样就能少几个切片，
 
 ########### MapReduces运行时，Job所需的资源有：job.split, job.xml, jar这三个文件。
+
+########### MapReduces数据倾斜
+在做订单与商品做join on 的时候，发现有这样一个问题，因为他是拿 商品ID(pid)作为key的，这样在Reduces Task的时候，如果一个商品的订单特别多，如订单有10000个，而另外的商品只有2个订单。
+这样因为默认 MapReduces是用key来hash来确定他是在哪个Reduces上跑。就导致一个Reduces特别忙，另外一个特别闲，这样就特别不均衡。就叫数据倾斜。
+-》如何解决？
+思路就是在Map里处理完，不到Reduces，Map里是按切片来的，还算很均衡。
+订单表数据多，商品表数据少。这样就可以在Map Task里，每条订单，去MapReduces提供的缓存里取数据。取完直接拼接上，就出结果了，不用经过Reduce Task。
+******* 这个就是通过 DistributedCache[分布式的缓存]来解决。

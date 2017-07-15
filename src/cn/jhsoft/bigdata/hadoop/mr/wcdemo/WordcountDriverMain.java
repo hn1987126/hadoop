@@ -19,7 +19,7 @@ import org.apache.hadoop.mapreduce.lib.output.FileOutputFormat;
  *
  * Created by chen on 2017/7/14.
  */
-public class WordcountDriver {
+public class WordcountDriverMain {
 
 
     public static void main(String[] args) throws Exception {
@@ -42,7 +42,7 @@ public class WordcountDriver {
         Job job = Job.getInstance(conf);
 
         // 指定跑job的jar包,这种只合适在集群上用 hadoop jar xx.jar 主类名   这样来执行，或在本地的yarn来执行
-        job.setJarByClass(WordcountDriver.class);
+        job.setJarByClass(WordcountDriverMain.class);
         // 但是如果是想在服务器上用 java -jar xxx 这样执行，得这里指定jar名
         //job.setJar("/home/hadoop/hadoop.jar");
 

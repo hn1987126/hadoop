@@ -18,6 +18,8 @@ import java.io.IOException;
 import java.util.ArrayList;
 
 /**
+ * 订单与产品分布在两个文件中，此程序的功能是把他们拼接起来
+ *
  * Created by chen on 2017/7/15.
  */
 public class RJoinMain {
