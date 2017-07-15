@@ -2,6 +2,7 @@ package cn.jhsoft.bigdata.hadoop.mr.flowprovince;
 
 import cn.jhsoft.bigdata.hadoop.mr.flowsum.FlowBean;
 import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.io.LongWritable;
 import org.apache.hadoop.io.Text;
@@ -60,8 +61,8 @@ public class FlowCountMain {
     public static void main(String[] args) throws Exception {
 
         Configuration conf = new Configuration();
-        conf.set("mapreduce.framework.name", "yarn");
-        conf.set("yarn.resourcemanager.hostname", "s1");
+        //conf.set("mapreduce.framework.name", "yarn");
+        //conf.set("yarn.resourcemanager.hostname", "s1");
 
         Job job = Job.getInstance(conf);
 
@@ -93,13 +94,15 @@ public class FlowCountMain {
         job.setOutputValueClass(FlowBean.class);
 
         // 指定job的输入原始文件
-        FileInputFormat.setInputPaths(job, new Path("/flowsum/input"));
+        FileInputFormat.setInputPaths(job, new Path("/wordcount/flowsum/input"));
+
         // 指定job的输出结果所在目录
-        String pathName = "/flowsum/output";
-        if (args[0] != null){
-            pathName =args[0];
+        Path path = new Path("/wordcount/flowprovince/output");
+        FileSystem fs = FileSystem.get(conf);
+        if (fs.exists(path)){
+            fs.delete(path, true);
         }
-        FileOutputFormat.setOutputPath(job, new Path(pathName));
+        FileOutputFormat.setOutputPath(job, path);
 
         // 将job中配置的相关参数，以及job所用的java类所在的jar包，提交给yarn去运行
         boolean res = job.waitForCompletion(true);

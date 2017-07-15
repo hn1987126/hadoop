@@ -17,6 +17,8 @@ ll -R hdpdata    会列出hdpdata下的所有子目录和子子目录。
 ################# 特别好的小技巧，命令行里想让光标一次移动一个单词，可以设置一下.bashrc文件，这文件在每个用户的根目录下。
 vi ~/.bashrc  在里面加入一行     set -o vi    即可，这时想按B和W把光标移到一个单词，可以按ESC，如果想切回，再按下ESC即可。
 编辑完后需要执行下   source ~/.bashrc   使改变立即生效。
+################# 文本编辑器技巧：：：
+想要每行相同位置的字符进行统一修改，按住Alt键，再开始拖动，往上或往下拖，就可以批量修改。
 
 #### keepalived 虚拟IP,实现高可用，管nginx集群的
 
@@ -400,3 +402,16 @@ MapReduces里有个组件叫Partition，他是负责Map Task跑的时候，哪�
 #### MapReduces其他
 number of split : 3 是指map有三个切片。其实大概就是 /wordcount/input里有几个文件大概就是几个切片。当然还得根据minBlock和maxBlock来。
 MapReduces可以通过web页面来查看他的执行情况：http://s1:8088/
+
+############ MapReduces中，Combiner组件的作用：
+在Map Task进行时，生成<单词a,数量1>，<a,1>,<a,1>,<b,1>,<b,1>这样一个一个，很费空间还有传输的时候也影响速度。
+Combiner组件的任务是在使这样的生成，进行合并，如<a,3>,<b,2>，实质上Combiner也是继承自Reducer，此类的实现与WordcountReducer完全相同，所以可以用它来作为Combiner。
+但这也只适合能合并的情况，如果是一些运算类的，不合适合并就不要在这合并了，还是像原来一样在最后合并。
+
+############ MapReduces合适处理大文件，最好hdfs里存储的就是大文件，怎么弄？
+->这在数据源那进行控制，如把多个日志合并了，再往hdfs里写。但是如果是一些老数据，或无法合并，怎么弄？
+小文件性能差，因为一个小文件就会有一个切片
+->那就用job.setInputFormatClass(CombineTextInputFormat.class);在处理的时候进行逻辑合并。
+这样就能少几个切片，
+
+########### MapReduces运行时，Job所需的资源有：job.split, job.xml, jar这三个文件。
