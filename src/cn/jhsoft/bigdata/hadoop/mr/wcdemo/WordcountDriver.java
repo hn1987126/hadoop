@@ -23,13 +23,25 @@ public class WordcountDriver {
     public static void main(String[] args) throws Exception {
 
         Configuration conf = new Configuration();
-        conf.set("mapreduce.framework.name", "yarn");
-        conf.set("yarn.resourcemanager.hostname", "s1");
+
+        // 这是在远程跑
+        //conf.set("mapreduce.framework.name", "yarn");
+        //conf.set("yarn.resourcemanager.hostname", "s1");
+        //conf.set("fs.defaultFS", "hdfs://s1:9000/");
+        System.setProperty("HADOOP_USER_NAME", "hadoop");
+
+        // 这是跑本地的本在跑的底下这两行不配，默认就是这样的。。。
+        //conf.set("mapreduce.framework.name", "local");
+        //conf.set("fs.defaultFS", "file:///");
 
         Job job = Job.getInstance(conf);
 
-        // 指定跑job的jar包
-        job.setJarByClass(WordcountDriver.class);
+        // 指定跑job的jar包,这种只合适在集群上用 hadoop jar xx.jar 主类名   这样来执行，
+        //job.setJarByClass(WordcountDriver.class);
+        // 但是如果是想在服务器上用 java -jar xxx 这样执行，得这里指定jar名
+        job.setJar("/home/hadoop/hadoop.jar");
+        // 本地需要这样指定
+        job.setJar("D:\\Java\\hadoop\\out\\artifacts\\hadoop_jar\\hadoop.jar");
 
         // 指定本业务job要使用的 Mapper/Reducer 业务类
         job.setMapperClass(WordcountMapper.class);
@@ -44,9 +56,11 @@ public class WordcountDriver {
         job.setOutputValueClass(IntWritable.class);
 
         // 指定job的输入原始文件
-        FileInputFormat.setInputPaths(job, new Path("/wordcount/input"));
+        //FileInputFormat.setInputPaths(job, new Path("/wordcount/input"));
         // 指定job的输出结果所在目录
-        FileOutputFormat.setOutputPath(job, new Path("/wordcount/output"));
+        //FileOutputFormat.setOutputPath(job, new Path("/wordcount/output3"));
+        FileInputFormat.setInputPaths(job, new Path("D:\\me\\input"));
+        FileOutputFormat.setOutputPath(job, new Path("D:\\me\\output"));
 
         // 将job中配置的相关参数，以及job所用的java类所在的jar包，提交给yarn去运行
         boolean res = job.waitForCompletion(true);
