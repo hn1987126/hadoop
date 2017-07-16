@@ -19,6 +19,14 @@ vi ~/.bashrc  在里面加入一行     set -o vi    即可，这时想按B和W�
 编辑完后需要执行下   source ~/.bashrc   使改变立即生效。
 ################# 文本编辑器技巧：：：
 想要每行相同位置的字符进行统一修改，按住Alt键，再开始拖动，往上或往下拖，就可以批量修改。
+################# 批量杀掉hadoop等进程：
+killall -9 java
+################# mac上启动mysql:
+/usr/local/mysql/bin/mysql -u root -p123456
+################# 设置mysql允许其他机器登录:
+GRANT ALL ON *.* to root@'%' IDENTIFIED BY '123456';
+FLUSH PRIVILEGES;
+
 
 #### keepalived 虚拟IP,实现高可用，管nginx集群的
 
@@ -428,18 +436,109 @@ Combiner组件的任务是在使这样的生成，进行合并，如<a,3>,<b,2>�
 ########### MapReduces所有项目的思路：：
 ****先想清楚谁是key,想到相同的key会进同一个Reduces
 
+########### MapReduces想把结果写到数据库或自定义结果文件的文件名：：用自定义job.setOutputFormatClass
+########### 关于小文件的问题，之前想到两种办法，一种是在数据集成之前先弄成大文件，再放到hdfs，另外一种方法job.setInputFormatClass(CombineTextInputFormat.class);来合并
+还有一种办法是：用MapReduces，把小文件弄成k,v形式，k为文件名，v为文件内容。实例代码在 cn.jhsoft.bigdata.hadoop.mr.combinefile 包中。
+
+########### MapReduces全局计数器：每台机器每个Task，这里会全局来计数：（logenhance项目中有用到）
+// 获取一个计数器用来记录不合法的日志行数, 组名malformed, 计数器名称malformedline
+Counter counter = context.getCounter("malformed", "malformedline");
+counter.increment(1); // 计数器加1
+或者用枚举形式定义计数器，建议用上面的的字符串形式
+enum MyCounter {MALFORORMED, NORMAL}
+context.getCounter(MyCounter.MALFORORMED).increment(1);
+
+########### MapReduces优化参数：
+shuffle性能优化：
+mapreduce.task.io.sort.mb   100    //shuffle的环形缓冲区大小，默认100m,可以调大
+mapreduce.map.sort.spill.percent  0.8    // 环形缓冲区溢出的闸值，默认80%
 
 
 
 
+########################################################################################
+########################################################################################
+### Hive安装
+########################################################################################
+########################################################################################
+### hive装一台或多台都行，不需要集群，连同一个mysql就行。
+1、apache-hive-1.2.1-bin.tar.gz
+2、解压到apps目录里
+cd /home/hadoop
+tar -vxzf apache-hive-1.2.1-bin.tar.gz -C apps
+3、配置文件
+cd apps
+mv apache-hive-1.2.1-bin/ hive
 
+cd hive
+# 创建一个新的配置文件：
+vi conf/hive-site.xml
+加入：
+<configuration>
+<property>
+<name>javax.jdo.option.ConnectionURL</name>
+<value>jdbc:mysql://localhost:3306/hive?createDatabaseIfNotExist=true</value>
+<description>JDBC connect string for a JDBC metastore</description>
+</property>
 
+<property>
+<name>javax.jdo.option.ConnectionDriverName</name>
+<value>com.mysql.jdbc.Driver</value>
+<description>Driver class name for a JDBC metastore</description>
+</property>
 
+<property>
+<name>javax.jdo.option.ConnectionUserName</name>
+<value>root</value>
+<description>username to use against metastore database</description>
+</property>
 
+<property>
+<name>javax.jdo.option.ConnectionPassword</name>
+<value>123456</value>
+<description>password to use against metastore database</description>
+</property>
+</configuration>
 
+#### 还需要把mysql-connector-java-5.1.28.jar包放到 hive/lib目录下
 
+4、启动
+/home/hadoop/apps/hive/bin/hive
 
+5、启动问题：
+Jline包版本不一致的问题，需要拷贝hive的lib目录中jline.2.12.jar的jar包替换掉hadoop中的
+cp /home/hadoop/apps/hive/lib/jline-2.12.jar /home/hadoop/apps/hadoop-2.6.4/share/hadoop/yarn/lib/jline-0.9.94.jar
 
+****创建了库之后，在hdfs的网页上就能看到 数据库的目录了 也就是在hdfs根目录下的这个目录下  /user/hive/warehouse
+****在mysql中也能看到新建了个hive库，里面有DBS表和TBLS表，能看到自己建的库表。
 
+5.1 测试
+create database jhsoft;
+use jhsoft;
+create table test(id bigint, username string) row format delimited fields terminated by ',';
+然后在hdfs里put 文件到 /user/hive/warehouse/jhsoft.db/test 下。
+如果建表出错：FAILED: Execution Error, return code 1 from org.apache.hadoop.hive.ql.exec.DDLTask. MetaException(message:For direct MetaStore DB connections, we don't support retries at the client level.)
+需要在mysql中   alter database hive character set latin1;
 
+6.建表(默认是内部表)
+create table trade_detail(id bigint, account string, income double, expenses double, time string) row format delimited fields terminated by '\t';
+#建分区表
+create table td_part(id bigint, account string, income double, expenses double, time string) partitioned by (logdate string) row format delimited fields terminated by '\t';
+#建外部表
+create external table td_ext(id bigint, account string, income double, expenses double, time string) row format delimited fields terminated by '\t' location '/td_ext';
 
+7.创建分区表
+#普通表和分区表区别：有大量数据增加的需要建分区表
+create table book (id bigint, name string) partitioned by (pubdate string) row format delimited fields terminated by '\t';
+
+#分区表加载数据
+load data local inpath './book.txt' overwrite into table book partition (pubdate='2010-08-22');
+load data local inpath '/root/data.am' into table beauty partition (nation="USA");
+select nation, avg(size) from beauties group by nation order by avg(size);
+
+8、启动hive为服务：/home/hadoop/apps/hive/bin/hiveserver2
+在另外一个终端用命令行登录启动的服务：
+/home/hadoop/apps/hive/bin/beeline
+在命令行里输入：     !connect jdbc:hive2://localhost:10000      默认端口是10000
+用户名输入  hadoop      这个可以在set里修改，一般情况下默认就是这个hadoop也不需要修改。
+密码输入空    进去的操作就跟在mysql命令行一样。

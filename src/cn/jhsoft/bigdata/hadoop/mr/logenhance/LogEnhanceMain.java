@@ -81,15 +81,15 @@ public class LogEnhanceMain {
 		job.setOutputKeyClass(Text.class);
 		job.setOutputValueClass(NullWritable.class);
 
+
+		FileInputFormat.setInputPaths(job, new Path("/wordcount/logenhance/input"));
+
 		// ################   ****** 这是核心 *******
 		// ################
 		// 要控制不同的内容写往不同的目标路径，可以采用自定义outputformat的方法
 		job.setOutputFormatClass(LogEnhanceOutputFormat.class);
 		// ################
 		// ################
-
-
-		FileInputFormat.setInputPaths(job, new Path("/wordcount/logenhance/input"));
 
 		// 尽管我们用的是自定义outputformat，但是它是继承制fileoutputformat
 		// 在fileoutputformat中，必须输出一个_success文件，所以在此还需要设置输出path
