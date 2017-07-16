@@ -27,7 +27,7 @@ import java.util.Map;
  *
  * Created by chen on 2017/7/15.
  */
-public class MapSideJoin {
+public class MapSideJoinMain {
 
 
     static class MapSideJoinMapper extends Mapper<LongWritable, Text, Text, NullWritable>{
@@ -77,7 +77,7 @@ public class MapSideJoin {
         Configuration conf = new Configuration();
         Job job = Job.getInstance(conf);
 
-        job.setJarByClass(MapSideJoin.class);
+        job.setJarByClass(MapSideJoinMain.class);
         job.setMapperClass(MapSideJoinMapper.class);
         job.setOutputKeyClass(Text.class);
         job.setOutputValueClass(NullWritable.class);

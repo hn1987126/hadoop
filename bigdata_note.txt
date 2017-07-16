@@ -423,3 +423,4 @@ Combiner组件的任务是在使这样的生成，进行合并，如<a,3>,<b,2>�
 思路就是在Map里处理完，不到Reduces，Map里是按切片来的，还算很均衡。
 订单表数据多，商品表数据少。这样就可以在Map Task里，每条订单，去MapReduces提供的缓存里取数据。取完直接拼接上，就出结果了，不用经过Reduce Task。
 ******* 这个就是通过 DistributedCache[分布式的缓存]来解决。
+******* hadoop在本地跑出来的目录是 /tmp/hadoop-chen/mapred/local/xxx
