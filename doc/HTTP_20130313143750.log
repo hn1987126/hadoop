@@ -100,8 +100,66 @@ product.txt
 P0001,苹果7,1000,5999
 P0002,苹果6s,1000,4999
 P0003,苹果6,1000,3999
+
+
+5、索引 index
+
+6、好友
+A:B,C,D,E,F
+B:A,C,E
+C:F,A,D
+D:A,E,F
+E:B,C,D
+F:A,B,C,D,E
  
- 
+7、日志清理
+日志文件为：/Users/chen/java/bigdata_doc/access.log.fensi
+
+8、订单按所购的商品的成交额排序
+a.txt
+
+Order_0000001,Pdt_01,222.8
+Order_0000001,Pdt_05,25.8
+Order_0000002,Pdt_05,325.8
+Order_0000002,Pdt_03,522.8
+Order_0000002,Pdt_04,122.4
+Order_0000003,Pdt_01,222.8
+
+
+
+
+
+9、logenhance项目(日志增强)
+a.txt
+
+http://www.jd.com
+http://house.sina.com.cn
+http://www.jiayucn.com
+http://www.baidu.com
+http://www.ali.com
+http://www.yongche.com
+http://www.jiayuan.com
+
+
+数据库
+-- ----------------------------
+-- Table structure for url_rule
+-- ----------------------------
+DROP TABLE IF EXISTS `url_rule`;
+CREATE TABLE `url_rule` (
+  `url` varchar(2000) DEFAULT NULL,
+  `content` varchar(255) DEFAULT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8;
+
+
+insert into url_rule values('http://www.jd.com', '京东');
+insert into url_rule values('http://house.sina.com.cn', '新浪房产');
+insert into url_rule values('http://www.jiayuan.com', '世纪佳缘');
+insert into url_rule values('http://www.yongche.com', '易到用车');
+
+
+
+
  
  
  
