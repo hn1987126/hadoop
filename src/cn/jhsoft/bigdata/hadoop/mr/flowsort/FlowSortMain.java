@@ -69,8 +69,8 @@ public class FlowSortMain {
     public static void main(String[] args) throws Exception {
 
         Configuration conf = new Configuration();
-        conf.set("mapreduce.framework.name", "yarn");
-        conf.set("yarn.resourcemanager.hostname", "s1");
+        //conf.set("mapreduce.framework.name", "yarn");
+        //conf.set("yarn.resourcemanager.hostname", "s1");
 
         Job job = Job.getInstance(conf);
 
@@ -94,10 +94,10 @@ public class FlowSortMain {
         job.setOutputValueClass(FlowBean.class);
 
         // 指定job的输入原始文件
-        FileInputFormat.setInputPaths(job, new Path("/flowsum/output2"));
+        FileInputFormat.setInputPaths(job, new Path("/wordcount/flowsort/input"));
 
         // 指定job的输出结果所在目录
-        Path path = new Path("/flowsum/outsort");
+        Path path = new Path("/wordcount/flowsort/output");
         FileSystem fs = FileSystem.get(conf);
         if (fs.exists(path)){
             fs.delete(path, true);
