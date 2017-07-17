@@ -542,6 +542,8 @@ select nation, avg(size) from beauties group by nation order by avg(size);
 在命令行里输入：     !connect jdbc:hive2://localhost:10000      默认端口是10000
 用户名输入  hadoop      这个可以在set里修改，一般情况下默认就是这个hadoop也不需要修改。
 密码输入空    进去的操作就跟在mysql命令行一样。
+或者这个在一步搞定，适合写在启动文件中：：
+/home/hadoop/apps/hive/bin/beeline -u jdbc:hive2://localhost:10000 -n hadoop
 
 9、### 建表：
 内部表
@@ -717,3 +719,52 @@ select * from c s1 inner join c s2 on s1.depid=s2.depid and s2.name='陈义';
 
 select * from c s1 left semi join c s2 on s1.depid=s2.depid and s2.name='陈义';
 select s1.name from c s1 right semi join c s2 on s1.depid=s2.depid and s2.name='陈义';
+
+
+
+15、hive里可以自定义java函数  和  transform调python脚本
+-------------
+UDF案例：
+create table rat_json(line string) row format delimited;
+load data local inpath '/home/hadoop/rating.json' into table rat_json;
+java里要引入hive的包，创建类，继承自org.apache.hadoop.hive.ql.exec.UDF,重写方法public String evaluate(String field)
+把项目打成jar包，在hive命令行里：
+add JAR /home/hadoop/myudf.jar;
+create temporary function parsejson as 'cn.jhsoft.bigdata.hadoop.hive.udf.ToProvince';
+然后在底下就可以执行如下的sql语句了。其中temporary是自定义函数的关键词。
+
+### 这个是先用java写parsejson函数：此函数返回来的是一行一行的数据，用\t隔开字段，这句sql的目的是把\t隔开的东西分别插入数据库中，用split这个内置的函数。
+create table t_rating as
+select split(parsejson(line),'\t')[0]as movieid,split(parsejson(line),'\t')[1] as rate,split(parsejson(line),'\t')[2] as timestring,split(parsejson(line),'\t')[3] as uid from rat_json limit 10;
+
+-------或者直接用get_json_object这个内置函数。
+内置jason函数，这个是读取数据库的行,$.movie是json里key的名字。
+select get_json_object(line,'$.movie') as moive,get_json_object(line,'$.rate') as rate  from rat_json limit 10;
+
+-----------
+transform案例:
+
+***********使用transform+python的方式去转换unixtime为weekday
+先编辑一个python脚本文件
+########python######代码
+vi weekday_mapper.py
+#!/bin/python
+import sys
+import datetime
+
+for line in sys.stdin:
+  line = line.strip()
+  movieid, rating, unixtime,userid = line.split('\t')
+  weekday = datetime.datetime.fromtimestamp(float(unixtime)).isoweekday()
+  print '\t'.join([movieid, rating, str(weekday),userid])
+
+************然后，将文件加入hive的classpath：
+hive>add FILE /home/hadoop/weekday_mapper.py;
+hive>create TABLE u_data_new as
+SELECT
+  TRANSFORM (movieid, rate, timestring,uid)
+  USING 'python weekday_mapper.py'
+  AS (movieid, rate, weekday,uid)
+FROM t_rating;
+
+select distinct(weekday) from u_data_new limit 10;
