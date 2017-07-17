@@ -411,8 +411,6 @@ MapReduces里有个组件叫Partition，他是负责Map Task跑的时候，哪�
 number of split : 3 是指map有三个切片。其实大概就是 /wordcount/input里有几个文件大概就是几个切片。当然还得根据minBlock和maxBlock来。
 MapReduces可以通过web页面来查看他的执行情况：http://s1:8088/
 
-<<<<<<< HEAD
-=======
 ############ MapReduces中，Combiner组件的作用：
 在Map Task进行时，生成<单词a,数量1>，<a,1>,<a,1>,<b,1>,<b,1>这样一个一个，很费空间还有传输的时候也影响速度。
 Combiner组件的任务是在使这样的生成，进行合并，如<a,3>,<b,2>，实质上Combiner也是继承自Reducer，此类的实现与WordcountReducer完全相同，所以可以用它来作为Combiner。
@@ -544,4 +542,3 @@ select nation, avg(size) from beauties group by nation order by avg(size);
 在命令行里输入：     !connect jdbc:hive2://localhost:10000      默认端口是10000
 用户名输入  hadoop      这个可以在set里修改，一般情况下默认就是这个hadoop也不需要修改。
 密码输入空    进去的操作就跟在mysql命令行一样。
->>>>>>> 834e354393bcbc0269e0d87be3d3cbf5ecde19bf
