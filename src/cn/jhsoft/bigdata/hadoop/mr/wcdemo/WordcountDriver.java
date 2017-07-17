@@ -28,7 +28,7 @@ public class WordcountDriver {
         //conf.set("mapreduce.framework.name", "yarn");
         //conf.set("yarn.resourcemanager.hostname", "s1");
         //conf.set("fs.defaultFS", "hdfs://s1:9000/");
-        System.setProperty("HADOOP_USER_NAME", "hadoop");
+        //System.setProperty("HADOOP_USER_NAME", "hadoop");
 
         // 这是跑本地的本在跑的底下这两行不配，默认就是这样的。。。
         //conf.set("mapreduce.framework.name", "local");
