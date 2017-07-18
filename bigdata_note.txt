@@ -42,6 +42,9 @@ ln /home/hadoop/apps /abc
 nohup /usr/sbin/php-fpm -R >/dev/null 2>&1 &
 ################# 显示开启了哪些端口
 netstat -tlpn
+################# 查找文件
+find / -name "nginx"
+which nginx
 
 
 #### keepalived 虚拟IP,实现高可用，管nginx集群的
@@ -565,7 +568,8 @@ select nation, avg(size) from beauties group by nation order by avg(size);
 
 ###########################################
 **** 在shell脚本里执行hive命令：
-hive -e 'sql'
+/home/hadoop/apps/hive/bin/hive -e 'show databases'
+/home/hadoop/apps/hive/bin/hive -f 'test.sql'
 
 
 9、### 建表：
@@ -1140,7 +1144,7 @@ jetty.keypassword=123456
 jetty.trustpassword=123456
 
 ### 文件2、 还需要修改conf/azkaban-users.xml 这个配置文件，加用户名密码：
-加入一行<user username="admin" password="admin" roles="admin,metrics"/>
+在空白行处加入<user username="admin" password="admin" roles="admin,metrics"/>
 
 ### 文件3、执行服务器，也就是 executor 服务器的配置：
 vi /home/hadoop/azkaban/executor/conf/azkaban.properties
@@ -1158,30 +1162,153 @@ sed -i "/^mysql.password=/c\mysql.password=123456" /home/hadoop/azkaban/server/c
 sed -i "/^jetty.password=/c\jetty.password=123456" /home/hadoop/azkaban/server/conf/azkaban.properties
 sed -i "/^jetty.keypassword=/c\jetty.keypassword=123456" /home/hadoop/azkaban/server/conf/azkaban.properties
 sed -i "/^jetty.trustpassword=/c\jetty.trustpassword=123456" /home/hadoop/azkaban/server/conf/azkaban.properties
+sed -i "/^user.manager.xml.file=/c\user.manager.xml.file=/home/hadoop/azkaban/server/conf/azkaban-users.xml" /home/hadoop/azkaban/server/conf/azkaban.properties
+sed -i "/^jetty.keystore=/c\jetty.keystore=/home/hadoop/azkaban/server/keystore" /home/hadoop/azkaban/server/conf/azkaban.properties
+sed -i "/^jetty.truststore=/c\jetty.truststore=/home/hadoop/azkaban/server/keystore" /home/hadoop/azkaban/server/conf/azkaban.properties
 sed -i '/^<azkaban-users>/a\        <user username="admin" password="admin" roles="admin,metrics"/>' /home/hadoop/azkaban/server/conf/azkaban-users.xml
 
 sed -i "/^default.timezone.id=/c\default.timezone.id=Asia/Shanghai" /home/hadoop/azkaban/executor/conf/azkaban.properties
 sed -i "/^mysql.database=/c\mysql.database=azkaban" /home/hadoop/azkaban/executor/conf/azkaban.properties
 sed -i "/^mysql.user=/c\mysql.user=root" /home/hadoop/azkaban/executor/conf/azkaban.properties
 sed -i "/^mysql.password=/c\mysql.password=123456" /home/hadoop/azkaban/executor/conf/azkaban.properties
+sed -i "/^executor.global.properties=/c\executor.global.properties=/home/hadoop/azkaban/executor/conf/global.properties" /home/hadoop/azkaban/executor/conf/azkaban.properties
+
 
 
 ######## 启动
 /home/hadoop/azkaban/server/bin/azkaban-web-start.sh
 /home/hadoop/azkaban/executor/bin/azkaban-executor-start.sh
+如果启动没问题，应该加入到后台去执行
+nohup /home/hadoop/azkaban/server/bin/azkaban-web-start.sh 1>/var/log/azkaban-web.log 2>/var/log/azkaban-web.err &
+nohup /home/hadoop/azkaban/executor/bin/azkaban-executor-start.sh 1>/var/log/azkaban-executor.log 2>/var/log/azkaban-executor.err &
 
-######## 批量结束azkaban进程
+######## 如果启动时报错：
+Invalid maximum heap size: -Xmx4G
+The specified size exceeds the maximum representable size.
+Error: Could not create the Java Virtual Machine.
+Error: A fatal exception has occurred. Program will exit.
+这需要vi /home/hadoop/azkaban/server/bin/azkaban-web-start.sh
+把里面的AZKABAN_OPTS="-Xmx4G" 修改为  AZKABAN_OPTS="-Xmx512M"
+这需要vi /home/hadoop/azkaban/executor/bin/azkaban-executor-start.sh
+把里面的AZKABAN_OPTS="-Xmx3G" 修改为  AZKABAN_OPTS="-Xmx512M"
+
+######## 结束azkaban进程
+/home/hadoop/azkaban/server/bin/azkaban-web-shutdown.sh
+/home/hadoop/azkaban/executor/bin/azkaban-executor-shutdown.sh
+也可以批量kill掉进程
 ps -ef | grep azkaban | awk '{print $2}' | xargs kill
 
 ######## 可以通过 https://s1:8443 访问
 用户名密码都为admin
 
+######## 测试
+新建hdfs.job文件，内容如下。并且把他打成zip包。在网盘的azkaban_jobs.zip包里就有
+#hdfs.job
+type=command
+command=/home/hadoop/apps/hadoop-2.6.4/bin/hadoop fs -mkdir /abcde
+用这个命令打成zip包   zip hdfs.zip hdfs.job
+在web界面新建一个项目Create Project
+Upload刚才打的那压缩包
+点Execute Flow 点Execute即可，执行完成，点Detail看详情。
 
-三、
 
 
+三、sqoop 数据迁移工具
+Hadoop和关系数据库服务器之间传送数据的工具。
+mysql到hadoop(hive,hdfs,hbase)，hadoop到mysql关系型数据库
+
+### 安装前的准备：
+网盘里sqoop-1.4.6.bin__hadoop-2.0.4-alpha.tar.gz这个包
+还需要mysql驱动 mysql-connector-java-5.1.28.jar
+
+cd /home/hadoop
+tar -vxzf soft/sqoop-1.4.6.bin__hadoop-2.0.4-alpha.tar.gz -C apps
+cd apps
+mv sqoop-1.4.6.bin__hadoop-2.0.4-alpha/ sqoop
+cd sqoop/conf
+mv sqoop-env-template.sh sqoop-env.sh
+
+#修改配置文件
+sed -i "/^#export HADOOP_COMMON_HOME=/c\export HADOOP_COMMON_HOME=/home/hadoop/apps/hadoop-2.6.4/" /home/hadoop/apps/sqoop/conf/sqoop-env.sh
+sed -i "/^#export HADOOP_MAPRED_HOME=/c\export HADOOP_MAPRED_HOME=/home/hadoop/apps/hadoop-2.6.4/" /home/hadoop/apps/sqoop/conf/sqoop-env.sh
+sed -i "/^#export HIVE_HOME=/c\export HIVE_HOME=/home/hadoop/apps/hive" /home/hadoop/apps/sqoop/conf/sqoop-env.sh
+
+#加入mysql的jdbc驱动包
+cp /home/hadoop/apps/hive/lib/mysql-connector-java-5.1.28.jar /home/hadoop/apps/sqoop/lib
+
+###### 启动：
+/home/hadoop/apps/sqoop/bin/sqoop
+
+###### 导入导出
+export是从hdfs导到mysql中
+import是从mysql到hdfs中
+导入：(--m 1 是指用1个reduces来跑)
+/home/hadoop/apps/sqoop/bin/sqoop import \
+--connect jdbc:mysql://s1:3306/jhs_zhongchou \
+--username root \
+--password 123456 \
+--table jhs_html \
+--target-dir /db/queryresult \
+--m 1
+
+--target-dir 是指定hdfs的目录，如果不加则默认是导到/user/hadoop/目录下，此目录里生成文件jhs_html/part-m-00000中
+hadoop fs -cat /user/hadoop/jhs_html/part-m-00000
+
+#先把上面导的文件删掉
+hadoop fs -rm -r /user/hadoop/jhs_html
+导入到hive
+/home/hadoop/apps/sqoop/bin/sqoop import \
+--connect jdbc:mysql://s1:3306/jhs_zhongchou \
+--username root \
+--password 123456 \
+--table jhs_html \
+--hive-import \
+--m 1
+
+导入的过程中，加where条件，把查询结果导入
+/home/hadoop/apps/sqoop/bin/sqoop import \
+--connect jdbc:mysql://s1:3306/jhs_zhongchou \
+--username root \
+--password 123456 \
+--table jhs_html \
+--where "id=1" \
+--target-dir /db/queryresult \
+--m 1
+
+导入加query 查询，注意query后面的and $CONDITIONS是一定要加的，而且--table就一定不要要了，因为query里已经有表在了。
+/home/hadoop/apps/sqoop/bin/sqoop import \
+--connect jdbc:mysql://s1:3306/jhs_zhongchou \
+--username root \
+--password 123456 \
+--query 'select id,title,url from jhs_html where id > 2 and $CONDITIONS' \
+--target-dir /db/queryresult2 \
+--m 1
+
+######## 增量导入
+这个语句 指明要增量导入，主键是id字段，上次导到了 3 这个id，本次就从1026开始导
+/home/hadoop/apps/sqoop/bin/sqoop import \
+--connect jdbc:mysql://s1:3306/jhs_zhongchou \
+--username root \
+--password 123456 \
+--table jhs_html --m 1 \
+--target-dir /db/queryresult3 \
+--incremental append \
+--check-column id \
+--last-value 3
+
+执行完后有如下这样的提示：
+17/07/19 00:11:59 INFO tool.ImportTool:  --incremental append
+17/07/19 00:11:59 INFO tool.ImportTool:   --check-column id
+17/07/19 00:11:59 INFO tool.ImportTool:   --last-value 6
 
 
+############ 导出
+/home/hadoop/apps/sqoop/bin/sqoop export \
+--connect jdbc:mysql://s1:3306/jhs_zhongchou \
+--username root \
+--password 123456 \
+--table jhs_html \
+--export-dir /db/queryresult3
 
 
 
