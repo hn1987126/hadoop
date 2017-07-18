@@ -26,6 +26,22 @@ killall -9 java
 ################# 设置mysql允许其他机器登录:
 GRANT ALL ON *.* to root@'%' IDENTIFIED BY '123456';
 FLUSH PRIVILEGES;
+################# tail -f xxx.log 中 -f 与 -F 的区别：
+-f 是监听指定的那文件的 iNode信息，就是文件本身，即使他重命名走了，也会监听他。
+-F 他监听的就是纯文件名，不是iNode，重命名走了，就不管了，只找那文件名的文件。
+################# Linux下软链接和硬链接的区别：
+软链接：  记住软链接需要使用绝对路径，相对路径会出现能建成功，但是打不开的问题。
+ln -s /home/hadoop/apps /aaa    这是在根目录下创建个aaa指向到 /home/hadoop/apps中
+硬链接：
+ln /home/hadoop/apps /abc
+不需要-s参数，他链接的两文件是完全相同的文件，只不过是有两个inode。也就是说两个文件名指向同一个文件数据
+一直要把这两文件都删除了，才算真的删除。如果只删了一个，因为还有别人在引用他，所以文件不会真的删除。
+################# php里执行shell，这个shell需要以root的身份来执行。
+可以修改 vim /etc/php-fpm.d/www.conf  这里有user和group都改成root
+就代表以root来运行php，但是这样以后，启动php-fpm时就会出问题，正常 /usr/sbin/php-fpm是启动不了的，需要如下这样来启动：
+nohup /usr/sbin/php-fpm -R >/dev/null 2>&1 &
+################# 显示开启了哪些端口
+netstat -tlpn
 
 
 #### keepalived 虚拟IP,实现高可用，管nginx集群的
@@ -536,7 +552,9 @@ load data local inpath './book.txt' overwrite into table book partition (pubdate
 load data local inpath '/root/data.am' into table beauty partition (nation="USA");
 select nation, avg(size) from beauties group by nation order by avg(size);
 
-8、启动hive为服务：/home/hadoop/apps/hive/bin/hiveserver2
+8、启动hive为前台服务：/home/hadoop/apps/hive/bin/hiveserver2
+启动hive为后台服务：nohup /home/hadoop/apps/hive/bin/hiveserver2 1>/var/log/hiveserver.log 2>/var/log/hiveserver.err &
+
 在另外一个终端用命令行登录启动的服务：
 /home/hadoop/apps/hive/bin/beeline
 在命令行里输入：     !connect jdbc:hive2://localhost:10000      默认端口是10000
@@ -544,6 +562,11 @@ select nation, avg(size) from beauties group by nation order by avg(size);
 密码输入空    进去的操作就跟在mysql命令行一样。
 或者这个在一步搞定，适合写在启动文件中：：
 /home/hadoop/apps/hive/bin/beeline -u jdbc:hive2://localhost:10000 -n hadoop
+
+###########################################
+**** 在shell脚本里执行hive命令：
+hive -e 'sql'
+
 
 9、### 建表：
 内部表
@@ -566,6 +589,9 @@ load data local inpath '/home/hadoop/t3.sql' into table t3 partition(province='s
 只有那种从别的表查询出来，再插入分桶表，会自动启动reduces程序，这种会进行分桶。下面两句要一起执行才有用。
 set hive.enforce.bucketing=true;     [或者 set mapred.reduce.tasks=4;]
 insert into table t4 select id,name from t1 cluster by (id);
+#设置变量,设置分桶为true, 设置reduce数量是分桶的数量个数
+set hive.enforce.bucketing = true;
+set mapreduce.job.reduces=4;
 
 
 11、### 分区表
@@ -673,8 +699,10 @@ select * from a left semi join b on a.id=b.id;
 | 2     | jd      |
 +-------+---------+--+
 
+****知识：left join 与 left outer join是一样的。outer可写可不写。
 
-### 练习
+
+### 练习1
 准备数据3.txt
 1,陈义,100
 2,宫海涛,100
@@ -721,8 +749,129 @@ select * from c s1 left semi join c s2 on s1.depid=s2.depid and s2.name='陈义'
 select s1.name from c s1 right semi join c s2 on s1.depid=s2.depid and s2.name='陈义';
 
 
+### 练习2
+准备数据  4.txt
+-- 人员，月份，数量
+-- 想要统计出每人每月的数量和，及累计值，如1月为10，累计值为10，2月20，累计值为30(10+20),3月值为15，累计为45(10+20+15)
 
-15、hive里可以自定义java函数  和  transform调python脚本
+A,2015-01,5
+A,2015-01,15
+B,2015-01,5
+A,2015-01,8
+B,2015-01,25
+A,2015-01,5
+A,2015-02,4
+A,2015-02,6
+B,2015-02,10
+B,2015-02,5
+
+#创建表
+create table t6(username string,month string,amount int)
+row format delimited fields terminated by ',';
+#导数据
+load data local inpath '/home/hadoop/4.txt' into table t6;
+# 查询一步一步来：
+## 先查出每人每月累计的值：
+select username,month,sum(amount) as sum_amount from t6 group by username,month;
++-----------+----------+-------------+--+
+| username  |  month   | sum_amount  |
++-----------+----------+-------------+--+
+| A         | 2015-01  | 33          |
+| A         | 2015-02  | 10          |
+| B         | 2015-01  | 30          |
+| B         | 2015-02  | 15          |
++-----------+----------+-------------+--+
+
+## 上面这个已经完成了第一个要求。在这个的基础上，完成第二个要求，思路是可以把这结果作为子表，再inner join 他自己。
+select * from
+(select username,month,sum(amount) as sum_amount from t6 group by username,month) as a
+inner join
+(select username,month,sum(amount) as sum_amount from t6 group by username,month) as b
+on a.username = b.username
+这个的结果会是：
++-------------+----------+---------------+-------------+----------+---------------+--+
+| a.username  | a.month  | a.sum_amount  | b.username  | b.month  | b.sum_amount  |
++-------------+----------+---------------+-------------+----------+---------------+--+
+| A           | 2015-01  | 33            | A           | 2015-01  | 33            |
+| A           | 2015-01  | 33            | A           | 2015-02  | 10            |
+| A           | 2015-02  | 10            | A           | 2015-01  | 33            |
+| A           | 2015-02  | 10            | A           | 2015-02  | 10            |
+| B           | 2015-01  | 30            | B           | 2015-01  | 30            |
+| B           | 2015-01  | 30            | B           | 2015-02  | 15            |
+| B           | 2015-02  | 15            | B           | 2015-01  | 30            |
+| B           | 2015-02  | 15            | B           | 2015-02  | 15            |
++-------------+----------+---------------+-------------+----------+---------------+--+
+
+再想得累加值，需要group by 人名和月份。同时sum(sum_amount)
+select username,month,max(sum_amount) as sum_amount,sum(sum_amounts) as sum_sum_amount from
+
+(
+select a.username,a.month,a.sum_amount,b.sum_amount as sum_amounts from
+(select username,month,sum(amount) as sum_amount from t6 group by username,month) as a
+inner join
+(select username,month,sum(amount) as sum_amount from t6 group by username,month) as b
+on a.username = b.username
+) as tmp
+
+group by username,month;
+
+这条sql将得到累加值的结果：
++-----------+----------+-------------+-----------------+--+
+| username  |  month   | sum_amount  | sum_sum_amount  |
++-----------+----------+-------------+-----------------+--+
+| A         | 2015-01  | 33          | 43              |
+| A         | 2015-02  | 10          | 43              |
+| B         | 2015-01  | 30          | 45              |
+| B         | 2015-02  | 15          | 45              |
++-----------+----------+-------------+-----------------+--+
+
+这个结果还差一点，最后一列不应该是都43，应该第一条是33，第二条再是43。所以那里应该加个条件：
+应该b.month要小于等于a.month，这样sum(b.sum_amount)的时候，才会是取此月及此月之前的累计值。
+改造后：
+select username,month,max(sum_amount) as sum_amount,sum(sum_amounts) as sum_sum_amount from
+
+(
+select a.username,a.month,a.sum_amount,b.month as b_month,b.sum_amount as sum_amounts from
+(select username,month,sum(amount) as sum_amount from t6 group by username,month) as a
+inner join
+(select username,month,sum(amount) as sum_amount from t6 group by username,month) as b
+on a.username = b.username
+) as tmp
+
+where b_month<=month
+group by username,month;
++-----------+----------+-------------+-----------------+--+
+| username  |  month   | sum_amount  | sum_sum_amount  |
++-----------+----------+-------------+-----------------+--+
+| A         | 2015-01  | 33          | 33              |
+| A         | 2015-02  | 10          | 43              |
+| B         | 2015-01  | 30          | 30              |
+| B         | 2015-02  | 15          | 45              |
++-----------+----------+-------------+-----------------+--+
+
+
+这sql在inner join那一层的时候写的太繁琐了，用了个tmp临时表，是为了方便看，实际上可以简写成如下这样：
+select a.username,a.month,max(a.sum_amount) as sum_amount,sum(b.sum_amount) as sum_sum_amount from
+(select username,month,sum(amount) as sum_amount from t6 group by username,month) as a
+inner join
+(select username,month,sum(amount) as sum_amount from t6 group by username,month) as b
+on a.username = b.username
+where b.month<=a.month
+group by a.username,a.month
+order by a.username,a.month;
++-------------+----------+-------------+-----------------+--+
+| a.username  | a.month  | sum_amount  | sum_sum_amount  |
++-------------+----------+-------------+-----------------+--+
+| A           | 2015-01  | 33          | 33              |
+| A           | 2015-02  | 10          | 43              |
+| B           | 2015-01  | 30          | 30              |
+| B           | 2015-02  | 15          | 45              |
++-------------+----------+-------------+-----------------+--+
+
+
+
+
+15、hive里可以自定义函数(通过java类打包成jar实现)  和  transform调python脚本。
 -------------
 UDF案例：
 create table rat_json(line string) row format delimited;
@@ -768,3 +917,259 @@ SELECT
 FROM t_rating;
 
 select distinct(weekday) from u_data_new limit 10;
+
+
+
+################# 数据采集辅助工具：
+一、Flume
+数据采集，聚合，传输到hdfs
+可以采集mysql,kafaka,文件，日志等。
+****可以玩一下nc，他是用来建立soket服务器的，yum -y install nc，在一个终端输入nc -l 6666 就开启了一个服务器
+****在另外的终端 nc s1 6666  即可与对方通话，如他发的消息，对方就能看到。
+## 安装：上传apache-flume-1.6.0-bin.tar.gz到服务器，解压。
+
+## 配置文件：：：：：：：：：
+这个软件里不需要配置任何他的配置文件，只要新加一些自己的配置文件，指定采集源。
+
+vi conf/netcat-logger.conf新建一个配置文件：：：
+conf/netcat-logger.conf 配置文件内容：
+# Name the components on this agent
+#给那三个组件取个名字
+a1.sources = r1   //源
+a1.sinks = k1    // 目标
+a1.channels = c1  // 通道
+
+# Describe/configure the source
+#类型, 从网络端口接收数据,在本机启动, 所以localhost, type=spooldir采集目录源,目录里有就采
+#类型还有netcat,spooldir,exec,avro
+a1.sources.r1.type = netcat
+a1.sources.r1.bind = localhost
+a1.sources.r1.port = 44444
+
+# Describe the sink 看效果的方式，目标不写到hdfs，而是输出在屏幕上立即显示
+a1.sinks.k1.type = logger
+
+# Use a channel which buffers events in memory
+#下沉的时候是一批一批的, 下沉的时候是一个个eventChannel参数解释：
+#capacity：默认该通道中最大的可以存储的event数量
+#trasactionCapacity：每次最大可以从source中拿到或者送到sink中的event数量
+a1.channels.c1.type = memory
+a1.channels.c1.capacity = 1000
+a1.channels.c1.transactionCapacity = 100
+
+# Bind the source and sink to the channel
+a1.sources.r1.channels = c1
+a1.sinks.k1.channel = c1
+
+启动：
+/home/hadoop/apps/flume/bin/flume-ng agent --conf /home/hadoop/apps/flume/conf --conf-file /home/hadoop/apps/flume/conf/netcat-logger.conf --name a1 -Dflume.root.logger=INFO,console &
+参数解释：
+--conf-file 是指我的采集方案文件的所在目录
+--name a1   是启动agent的名称，上面的那个conf-file配置文件里写了a1，他们对应着
+-Dflume.root.logger=INFO,console   这是控制日志输出的，给netcat-logger.conf里传的参数，可以不用管
+启动后，会监听本机的44444端口。
+******* 注意，上面那配置文件里写的bind  是localhost是代表着本机telnet才能连上，如果想让外面别的机器能telnet上他，需要改成本机的主机名，如s1
+
+### 测试：：
+在另外一个终端，telnet localhost 44444
+也可能需要yum -y install telnet
+连上后就可以发消息与对方通信了。
+flume 里接收到的是这样的：Event: { headers:{} body: 31 0D  hi i love m,}
+*** telnet中在输入界面想退出  ctrl+]   才可以，再输入quit就可以了。
+
+##############################################################
+### 采其他的数据源，只要指定其他的配置文件即可，如网盘里的配置文件：
+如  spooldir-hdfs.conf  (监视目录)
+启动:
+/home/hadoop/apps/flume/bin/flume-ng agent -c /home/hadoop/apps/flume/conf -f /home/hadoop/apps/flume/conf/spool-logger.conf -n a1 -Dflume.root.logger=INFO,console &
+
+配置文件跟netcat-logger.conf比，变化的是：：
+指定 a1.sources.r1.type = spooldir
+a1.sources.r1.spoolDir = /home/hadoop/flumespool
+a1.sources.r1.fileHeader = true
+
+需要提前建好 目录 /home/hadoop/flumespool
+移动一个文件如1.txt到flumespool目录中，cp,vim等都可以，只要有新的文件生成，spool都会知道。
+采集的时候，是一行一个event到flume中。采集完成后，会重命名为 1.txt.COMPLETED。
+如果采集完成后，再复制个1.txt进来，采集时就会出错，因为他再生命名为 1.txt.COMPLETED的时候，就会重名。
+
+################################################################
+上面的例子中，都是把目标定在终端显示上，其实实际工作中肯定是要写到hdfs里的，还是之前一样的配置文件，只是要设置sinks这块的东西：
+# Describe the sinks
+a1.sinks.k1.type = hdfs
+a1.sinks.k1.channel = c1
+a1.sinks.k1.hdfs.path = /flume/events/%y-%m-%d/%H%M/
+a1.sinks.k1.hdfs.filePrefix = events-
+a1.sinks.k1.hdfs.round = true
+#底下两行是对 %H%M 生效的，上面的path是时分生成目录，底下这两行是定义10分钟生成一个新目录
+a1.sinks.k1.hdfs.roundValue = 10
+a1.sinks.k1.hdfs.roundUnit = minute
+#文件滚动周期 默认是30秒，这里为了测试变小一点改为3秒
+a1.sinks.k1.hdfs.rollInterval = 3
+#文件滚动大小限制(bytes)  默认是1024字节,测试改小为200字节
+a1.sinks.k1.hdfs.rollSize = 200
+#发生了多少个事件(event)滚动一下，默认是10
+a1.sinks.k1.hdfs.rollCount = 5
+#有多大的时候，滚动一次，默认是100
+a1.sinks.k1.hdfs.batchSize = 100
+#从本地取时间
+a1.sinks.k1.hdfs.useLocalTimeStamp = true
+#生成的文件类型，默认是Sequencefile[序列文件，数据流]，可用DataStream，则为普通文本，还可以用压缩的CompressedStream
+a1.sinks.k1.hdfs.fileType = DataStream
+
+#用上面这些替换到原来的   a1.sinks.k1.type = logger
+
+############## 完成的配置文件 tail-hdfs.conf,  exec这种类型，执行tail命令的时候会写到hdfs
+# Name the components on this agent
+a1.sources = r1
+a1.sinks = k1
+a1.channels = c1
+
+# Describe/configure the source
+a1.sources.r1.type = exec
+a1.sources.r1.command = tail -F /home/hadoop/log/test.log
+a1.sources.r1.channels = c1
+
+# 上面那一堆的sinks的放在这里。
+
+# Use a channel which buffers events in memory
+a1.channels.c1.type = memory
+a1.channels.c1.capacity = 1000
+a1.channels.c1.transactionCapacity = 100
+
+# Bind the source and sink to the channel
+a1.sources.r1.channels = c1
+a1.sinks.k1.channel = c1
+
+##########执行命令前的准备：
+a、首先把这配置文件拷到 /home/hadoop/apps/flume/conf下
+b、创建 log目录，和log目录下的test.log文件
+mkdir /home/hadoop/log
+touch /home/hadoop/log/test.log
+c、不断的往test.log文件里写内容，执行如下shell
+while true
+do
+echo 11111111111 >> /home/hadoop/log/test.log
+sleep 0.5
+done
+
+d、执行tail -F test.log 看看，看了以后就可以关了，因为flume里会去执行这个命令。
+
+
+########## 执行命令
+/home/hadoop/apps/flume/bin/flume-ng agent -c /home/hadoop/apps/flume/conf -f /home/hadoop/apps/flume/conf/tail-hdfs.conf -n a1
+
+########## 结果
+可以在hdfs里的根目录下创建flume目录(自动生成)。最里面的文件有.tmp结尾的，代表正在写的。
+
+
+################################################################  flume 多个agent多级串联
+如果是多个agent连接，则需要一台agent往另一台agent里写数据。这时接收数据就需要用到 avro 这种类型了。
+第一台，也就是发送者指定 avrc sink ,hostname 和 port得是第二台接收都的  host和port 如s2 4141
+第二台，接收者，他的数据源得是avro ,里面的hostname和port得是他本机的host名和指定的端口号。
+发送者(第一台)的sinks得如下设置
+# Describe the sink
+a1.sinks = k1
+a1.sinks.k1.type = avro
+a1.sinks.k1.channel = c1
+a1.sinks.k1.hostname = s2
+a1.sinks.k1.port = 4141
+#一批两个事件
+a1.sinks.k1.batch-size = 2
+
+接收者(第二台)的sources
+# Describe/configure the source
+a1.sources.r1.type = avro
+a1.sources.r1.channels = c1
+a1.sources.r1.bind = 0.0.0.0
+a1.sources.r1.port = 4141
+
+第一台执行：
+/home/hadoop/apps/flume/bin/flume-ng agent -c /home/hadoop/apps/flume/conf -f /home/hadoop/apps/flume/conf/tail-avro.conf -n a1 -Dflume.root.logger=INFO,console
+第二台执行：
+/home/hadoop/apps/flume/bin/flume-ng agent -c /home/hadoop/apps/flume/conf -f /home/hadoop/apps/flume/conf/avro-hdfs.conf -n a1 -Dflume.root.logger=INFO,console
+
+
+二、Azkaban  工作流调度器
+在hadoop领域常用的工作流调度器有Oozie,Azkanban,Cascading,Hamake等
+一共有三个包：azkaban-web-server-2.5.0.tar.gz  azkaban-executor-server-2.5.0.tar.gz  azkaban-sql-script-2.5.0.tar.gz
+其中 azkaban-sql-script-2.5.0.tar.gz 是数据库初始化脚本，azkaban的东西他自己要存在mysql中，需要服务器上装了mysql
+
+--------------------安装
+首先拷文件
+cd /home/hadoop
+mkdir azkaban
+tar -vxzf azkaban-web-server-2.5.0.tar.gz -C azkaban
+tar -vxzf azkaban-executor-server-2.5.0.tar.gz -C azkaban
+tar -vxzf azkaban-sql-script-2.5.0.tar.gz -C azkaban
+cd azkaban
+mv azkaban-web-2.5.0/ server
+mv azkaban-executor-2.5.0/ executor
+
+--------------------准备工作
+## 进入mysql界面
+/usr/local/mysql/bin/mysql -uroot -p123456
+create database azkaban;
+use azkaban;
+source /home/hadoop/azkaban/azkaban-2.5.0/create-all-sql-2.5.0.sql
+
+##创建SSL配置证书
+keytool -keystore keystore -alias jetty -genkey -keyalg RSA
+需要输入密钥库口令  123456
+底下的全部回车 代表Unknown
+确认的时候输入   y
+Enter key password for <jetty>    按回车，表示与上面的密码一样
+完成，此时在当前目录下生成了一个
+cp keystore /home/hadoop/azkaban/server
+
+## 统一时区：
+sudo cp /usr/share/zoneinfo/Asia/Shanghai /etc/localtime
+如果cp的时候提示没Asia/Shanghai这文件，需要先生成，用交互式命令tzselect即可生成。这个需要用root来执行，
+> tzselect
+在交互式里分别选择5(亚洲),9(中国),1(Beijing Time),1(yes)。这样就生成了。
+
+## 配置文件：
+
+
+
+三、
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
