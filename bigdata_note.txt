@@ -1115,7 +1115,7 @@ source /home/hadoop/azkaban/azkaban-2.5.0/create-all-sql-2.5.0.sql
 
 ##创建SSL配置证书
 keytool -keystore keystore -alias jetty -genkey -keyalg RSA
-需要输入密钥库口令  123456
+需要输入密钥库口令  123456   输两次
 底下的全部回车 代表Unknown
 确认的时候输入   y
 Enter key password for <jetty>    按回车，表示与上面的密码一样
@@ -1129,7 +1129,52 @@ sudo cp /usr/share/zoneinfo/Asia/Shanghai /etc/localtime
 在交互式里分别选择5(亚洲),9(中国),1(Beijing Time),1(yes)。这样就生成了。
 
 ## 配置文件：
+### 文件1、web-server里的配置文件，也就是server目录：
+vi /home/hadoop/azkaban/server/conf/azkaban.properties
+一共要修改这几个地方：
+default.timezone.id=Asia/Shanghai
+mysql.user=root
+mysql.password=123456
+jetty.password=123456
+jetty.keypassword=123456
+jetty.trustpassword=123456
 
+### 文件2、 还需要修改conf/azkaban-users.xml 这个配置文件，加用户名密码：
+加入一行<user username="admin" password="admin" roles="admin,metrics"/>
+
+### 文件3、执行服务器，也就是 executor 服务器的配置：
+vi /home/hadoop/azkaban/executor/conf/azkaban.properties
+要修改这些：
+default.timezone.id=Asia/Shanghai
+mysql.database=azkaban
+mysql.user=root
+mysql.password=123456
+
+
+*****上面三个配置文件，直接用下面的命令就改了，不用去vi里一个一个改：：：：：
+sed -i "/^default.timezone.id=/c\default.timezone.id=Asia/Shanghai" /home/hadoop/azkaban/server/conf/azkaban.properties
+sed -i "/^mysql.user=/c\mysql.user=root" /home/hadoop/azkaban/server/conf/azkaban.properties
+sed -i "/^mysql.password=/c\mysql.password=123456" /home/hadoop/azkaban/server/conf/azkaban.properties
+sed -i "/^jetty.password=/c\jetty.password=123456" /home/hadoop/azkaban/server/conf/azkaban.properties
+sed -i "/^jetty.keypassword=/c\jetty.keypassword=123456" /home/hadoop/azkaban/server/conf/azkaban.properties
+sed -i "/^jetty.trustpassword=/c\jetty.trustpassword=123456" /home/hadoop/azkaban/server/conf/azkaban.properties
+sed -i '/^<azkaban-users>/a\        <user username="admin" password="admin" roles="admin,metrics"/>' /home/hadoop/azkaban/server/conf/azkaban-users.xml
+
+sed -i "/^default.timezone.id=/c\default.timezone.id=Asia/Shanghai" /home/hadoop/azkaban/executor/conf/azkaban.properties
+sed -i "/^mysql.database=/c\mysql.database=azkaban" /home/hadoop/azkaban/executor/conf/azkaban.properties
+sed -i "/^mysql.user=/c\mysql.user=root" /home/hadoop/azkaban/executor/conf/azkaban.properties
+sed -i "/^mysql.password=/c\mysql.password=123456" /home/hadoop/azkaban/executor/conf/azkaban.properties
+
+
+######## 启动
+/home/hadoop/azkaban/server/bin/azkaban-web-start.sh
+/home/hadoop/azkaban/executor/bin/azkaban-executor-start.sh
+
+######## 批量结束azkaban进程
+ps -ef | grep azkaban | awk '{print $2}' | xargs kill
+
+######## 可以通过 https://s1:8443 访问
+用户名密码都为admin
 
 
 三、
