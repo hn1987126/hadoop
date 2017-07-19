@@ -1,0 +1,16 @@
+#程序流程：
+#先从mr/pre/WeblogPreProcess里进行   数据清洗
+#再从mr/ClickStream里运算出PageViewsBean模型的数据
+#再从mr/ClickStreamVisit里运算出VisitBean模型的数据
+
+
+#在服务器上：
+hadoop fs -mkdir -p /wordcount/weblog/input
+hadoop fs -put access.log.fensi /wordcount/weblog/input
+
+#执行hadoop的mapReduce
+hadoop jar hadoop.jar cn.jhsoft.webclick.mr.pre.WeblogPreProcess
+#可以查看有没有  hadoop fs -cat /wordcount/weblog/output/part-m-00000 | more
+hadoop jar hadoop.jar cn.jhsoft.webclick.mr.ClickStream
+#可以查看有没有  hadoop fs -cat /wordcount/weblog/output2/part-r-00000 | more
+hadoop jar hadoop.jar cn.jhsoft.webclick.mr.VisitBean
