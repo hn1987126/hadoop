@@ -550,6 +550,8 @@ create table trade_detail(id bigint, account string, income double, expenses dou
 create table td_part(id bigint, account string, income double, expenses double, time string) partitioned by (logdate string) row format delimited fields terminated by '\t';
 #建外部表
 create external table td_ext(id bigint, account string, income double, expenses double, time string) row format delimited fields terminated by '\t' location '/td_ext';
+#创建一个跟ods_weblog_origin一样的表，只有表结构
+create table tmp1 like ods_weblog_origin;
 
 7.创建分区表
 #普通表和分区表区别：有大量数据增加的需要建分区表
@@ -1334,7 +1336,7 @@ hive中row_number()的用法：
 原来的做法只能按性别group by，再按所有人的年龄排序：
 select sex,age from tt1 order by age desc group by sex;
 hive里这样用： 取分组后的每组的前两个。
-select sex,age,row_number() over (partition by sex order by age asc) as od from t1 where od <=2;
+
 
 
 #测试数据：
@@ -1349,6 +1351,115 @@ select sex,age,row_number() over (partition by sex order by age asc) as od from 
 #测试表
 create table tt1 (id int,sex string,age int) row format delimited fields terminated by ',';
 load data local inpath '/home/hadoop/1.txt' into table tt1;
+
+#hql
+select sex,age,row_number() over (partition by sex order by age asc) as od from tt1 ;
++------+------+-----+--+
+| sex  | age  | od  |
++------+------+-----+--+
+| 女    | 35   | 1   |
+| 女    | 40   | 2   |
+| 女    | 45   | 3   |
+| 男    | 18   | 1   |
+| 男    | 25   | 2   |
+| 男    | 32   | 3   |
+| 男    | 32   | 4   |
++------+------+-----+--+
+
+想要取前2名的：
+select * from
+(select sex,age,row_number() over (partition by sex order by age asc) as od from tt1) tmp
+where od<=2;
++----------+----------+---------+--+
+| tmp.sex  | tmp.age  | tmp.od  |
++----------+----------+---------+--+
+| 女        | 35       | 1       |
+| 女        | 40       | 2       |
+| 男        | 18       | 1       |
+| 男        | 25       | 2       |
++----------+----------+---------+--+
+
+
+
+项目：关键路径转化率分析，漏斗模型，借助shell目录下的python文件来生成访问日志mylog.log
+创建表：
+drop table if exists ods_weblog_origin;
+create table ods_weblog_origin(
+valid string,
+remote_addr string,
+remote_user string,
+time_local string,
+request string,
+status string,
+body_bytes_sent string,
+http_referer string,
+http_user_agent string)
+row format delimited
+fields terminated by '\001';
+
+#导数据
+load data local inpath "/home/hadoop/mylog.log" into table ods_weblog_origin;
+
+#创建统计表
+create table route_numbs as
+select 'step1' as step,count(distinct remote_addr)  as numbs from ods_weblog_origin where request like '/item%'
+union
+select 'step2' as step,count(distinct remote_addr) as numbs from ods_weblog_origin where request like '/category%'
+union
+select 'step3' as step,count(distinct remote_addr) as numbs from ods_weblog_origin where request like '/order%'
+union
+select 'step4' as step,count(distinct remote_addr)  as numbs from ods_weblog_origin where request like '/index%';
+
+
+#inner join自己连接自己
+select lelf.step as l_step,left.numbs as l_numbs,right.step as r_step,right.numbs as r_numbs  from route_num left
+inner join
+route_num right
+
+#求相对第一步的转化率
+select tmp.l_step,tmp.l_numbs/tmp.r_numbs as ratio
+from
+(
+select lelf.step as l_step,left.numbs as l_numbs,right.step as r_step,right.numbs as r_numbs  from route_num left
+inner join
+route_num right) tmp
+where tmp.r_step='step1';
+
+#求相对上一步的转化率
+select tmp.r_step as r_step,tmp.r_numbs/tmp.l_numbs as ration
+from
+(
+select lelf.step as l_step,left.numbs as l_numbs,right.step as r_step,right.numbs as r_numbs  from route_num left
+inner join
+route_num right) tmp
+where cast(substr(tmp.l_step,5,1) as int)=cast(substr(tmp.r_step,5,1) as int)-1
+
+
+1,10000
+2,4000
+3,2000
+
+t12
+step,amount
+1,10000, 1,10000
+1,10000, 2,4000
+1,10000, 3,2000
+
+
+select
+group by id,amount
+
+
+(select * from t12) as a
+inner join
+(select * from t12) as b
+on a.id=b.id
+
+
+
+
+
+
 
 
 

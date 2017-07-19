@@ -51,9 +51,9 @@ public class WeblogPreProcessMain {
 		job.setOutputKeyClass(Text.class);
 		job.setOutputValueClass(NullWritable.class);
 
-		FileInputFormat.setInputPaths(job, new Path("/wordcount/weblogwash/input"));
+		FileInputFormat.setInputPaths(job, new Path("/wordcount/weblog/input"));
 		FileSystem fs = FileSystem.get(conf);
-		Path path = new Path("/wordcount/weblogwash/output");
+		Path path = new Path("/wordcount/weblog/output");
 		if (fs.exists(path)){
 			fs.delete(path, true);
 		}
