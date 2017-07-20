@@ -298,3 +298,64 @@ ansible-playbook ags-deploy.yml --extra-vars="{'host':'webservers','mysql_ip':'1
 ###数据计算&数据集成 安装传递参数实例
 ansible-playbook xdata-deploy.yml --extra-vars="{'host':'webservers','mysql_ip':'172.27.13.92','redis_ip':'172.27.13.92','maps':[{'name':'bds-rest-dbus','port':16001},{'name':'dts-web','port':16002},{'name':'map-web','port':16003},{'name':'xdata-ras-api','port':16004}]}"
 ```
+
+
+
+#nginx标准配置
+```
+server
+    {
+        listen 8080;
+        #server_name api.pdp.jcloud.com;
+        index index.html index.htm index.php;
+        root /export/wwwroot/default/apiroot;
+
+        location /uc/ {
+            try_files $uri $uri/ /uc/index.php?$query_string;
+        }
+
+        location /console/ {
+            try_files $uri $uri/ /console/index.php?$query_string;
+        }
+        location /config/ {
+            try_files $uri $uri/ /config/index.php?$query_string;
+        }
+
+        location ~ \.php {
+            try_files $uri $uri/ /index.php?$query_string;
+            fastcgi_pass   127.0.0.1:9000;
+            fastcgi_index  /index.php;
+            fastcgi_param  SCRIPT_FILENAME  $document_root$fastcgi_script_name;
+            include        fastcgi_params;
+        }
+
+
+        location /nginx_status
+        {
+            stub_status on;
+            access_log   off;
+        }
+
+        location ~ .*\.(gif|jpg|jpeg|png|bmp|swf)$
+        {
+            expires      30d;
+        }
+
+        location ~ .*\.(js|css)?$
+        {
+            expires      12h;
+        }
+
+        location ~ /.well-known {
+            allow all;
+        }
+
+        location ~ /\.
+        {
+            deny all;
+        }
+
+        access_log  /export/wwwlogs/api.access.log;
+    }
+
+```

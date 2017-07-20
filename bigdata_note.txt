@@ -1402,58 +1402,83 @@ load data local inpath "/home/hadoop/mylog.log" into table ods_weblog_origin;
 
 #创建统计表
 create table route_numbs as
-select 'step1' as step,count(distinct remote_addr)  as numbs from ods_weblog_origin where request like '/item%'
+select 'step1' as step,count(distinct remote_addr) as numbs from ods_weblog_origin where request like '/item%'
 union
 select 'step2' as step,count(distinct remote_addr) as numbs from ods_weblog_origin where request like '/category%'
 union
 select 'step3' as step,count(distinct remote_addr) as numbs from ods_weblog_origin where request like '/order%'
 union
-select 'step4' as step,count(distinct remote_addr)  as numbs from ods_weblog_origin where request like '/index%';
+select 'step4' as step,count(distinct remote_addr) as numbs from ods_weblog_origin where request like '/index%';
 
 
 #inner join自己连接自己
-select lelf.step as l_step,left.numbs as l_numbs,right.step as r_step,right.numbs as r_numbs  from route_num left
+select a.step as a_step,a.numbs as a_numbs,b.step as b_step,b.numbs as b_numbs from route_numbs as a
 inner join
-route_num right
+route_numbs as b
+
 
 #求相对第一步的转化率
-select tmp.l_step,tmp.l_numbs/tmp.r_numbs as ratio
-from
+select a_step,a_numbs,a_numbs/b_numbs as ratio from
 (
-select lelf.step as l_step,left.numbs as l_numbs,right.step as r_step,right.numbs as r_numbs  from route_num left
-inner join
-route_num right) tmp
-where tmp.r_step='step1';
+select a.step as a_step,a.numbs as a_numbs,b.step as b_step,b.numbs as b_numbs from route_numbs as a inner join route_numbs as b
+) tmp
+where b_step='step1';
++---------+----------+----------------------+--+
+| a_step  | a_numbs  |         ratio        |
++---------+----------+----------------------+--+
+| step1   | 1015     | 1.0                  |
+| step2   | 150      | 0.1477832512315271   |
+| step3   | 89       | 0.08768472906403942  |
+| step4   | 47       | 0.04630541871921182  |
++---------+----------+----------------------+--+
+
 
 #求相对上一步的转化率
-select tmp.r_step as r_step,tmp.r_numbs/tmp.l_numbs as ration
-from
+select a_step,a_numbs/b_numbs as ration from
 (
-select lelf.step as l_step,left.numbs as l_numbs,right.step as r_step,right.numbs as r_numbs  from route_num left
-inner join
-route_num right) tmp
-where cast(substr(tmp.l_step,5,1) as int)=cast(substr(tmp.r_step,5,1) as int)-1
+select a.step as a_step,a.numbs as a_numbs,b.step as b_step,b.numbs as b_numbs from route_numbs as a inner join route_numbs as b
+) tmp
+where cast(substr(a_step,5,1) as int)=cast(substr(b_step,5,1) as int)+1;
++---------+---------------------+--+
+| a_step  |       ration        |
++---------+---------------------+--+
+| step2   | 0.1477832512315271  |
+| step3   | 0.5933333333333334  |
+| step4   | 0.5280898876404494  |
++---------+---------------------+--+
 
 
-1,10000
-2,4000
-3,2000
 
-t12
-step,amount
-1,10000, 1,10000
-1,10000, 2,4000
-1,10000, 3,2000
+#把他们合并在一张表里：
+select abs.a_step,abs.a_numbs,abs.ratio,rel.ration from
+(
+select a_step,a_numbs,a_numbs/b_numbs as ratio from
+(
+select a.step as a_step,a.numbs as a_numbs,b.step as b_step,b.numbs as b_numbs from route_numbs as a inner join route_numbs as b
+) tmp
+where b_step='step1'
+) abs
 
+left join
 
-select
-group by id,amount
+(
+select a_step,a_numbs/b_numbs as ration from
+(
+select a.step as a_step,a.numbs as a_numbs,b.step as b_step,b.numbs as b_numbs from route_numbs as a inner join route_numbs as b
+) tmp
+where cast(substr(a_step,5,1) as int)=cast(substr(b_step,5,1) as int)+1
+) rel
 
+on abs.a_step=rel.a_step;
 
-(select * from t12) as a
-inner join
-(select * from t12) as b
-on a.id=b.id
++-------------+--------------+----------------------+---------------------+--+
+| abs.a_step  | abs.a_numbs  |      abs.ratio       |     rel.ration      |
++-------------+--------------+----------------------+---------------------+--+
+| step1       | 1015         | 1.0                  | NULL                |
+| step2       | 150          | 0.1477832512315271   | 0.1477832512315271  |
+| step3       | 89           | 0.08768472906403942  | 0.5933333333333334  |
+| step4       | 47           | 0.04630541871921182  | 0.5280898876404494  |
++-------------+--------------+----------------------+---------------------+--+
 
 
 
