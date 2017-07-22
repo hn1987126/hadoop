@@ -16,6 +16,6 @@ for SERVER in ${SERVERS[@]}
 do
 	scp -r /usr/local/java root@$SERVER:/usr/local/
 	scp jdk_export.sh root@$SERVER:/root
-    	ssh root@$SERVER /bin/bash /root/jdk_export.sh
-    	ssh root@$SERVER /etc/profile
+    ssh root@$SERVER /bin/bash /root/jdk_export.sh
+    ssh root@$SERVER /etc/profile
 done
