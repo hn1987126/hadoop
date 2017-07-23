@@ -6,7 +6,7 @@ package cn.jhsoft.zk.thread;
 public class MySynchronizedReadWrite {
 
     public static void main(String[] args) {
-        MySynchronizedReadWrite test = new MySynchronizedReadWrite();
+        final MySynchronizedReadWrite test = new MySynchronizedReadWrite();
 
         new Thread(){
             @Override

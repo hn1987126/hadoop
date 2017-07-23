@@ -10,7 +10,7 @@ public class MyReentrantReadWriteLock {
     private ReentrantReadWriteLock rw1 = new ReentrantReadWriteLock();
 
     public static void main(String[] args) {
-        MyReentrantReadWriteLock test = new MyReentrantReadWriteLock();
+        final MyReentrantReadWriteLock test = new MyReentrantReadWriteLock();
 
         new Thread(){
             @Override

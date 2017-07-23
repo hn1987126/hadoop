@@ -66,7 +66,7 @@ public class RJoinMain {
             // 暂时订单个变量来存商品信息，后面会把他拼接到订单信息中
             InfoBean productBean = new InfoBean();
             // 用来存订单信息数组列表
-            ArrayList<InfoBean> orderBeans = new ArrayList<>();
+            ArrayList<InfoBean> orderBeans = new ArrayList<InfoBean>();
 
             for (InfoBean bean : values){
                 // 产品

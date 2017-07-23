@@ -25,5 +25,14 @@
             <version>1.9.2</version>
         </dependency>
 
+        <dependency>
+            <groupId>org.apache.storm</groupId>
+            <artifactId>storm-core</artifactId>
+            <version>0.9.5</version>
+            <!--<scope>provided</scope>-->
+        </dependency>
+        <!--<scope>provided</scope> 是指打包的时候，不要打进去，因为集群里已经有了-->
+
     </dependencies>
+
 </project>
