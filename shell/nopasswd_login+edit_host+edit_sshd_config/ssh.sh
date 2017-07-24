@@ -7,6 +7,8 @@ SERVERS=$1
 USER=$2
 # 密码
 PASSWORD=$3
+# 当前脚本所在的位置
+THIS_PATH=$(cd `dirname $0`; pwd)
 
 # 安装expect
 yum -y install expect
@@ -78,16 +80,16 @@ ssh_edit_host(){
         arr=($SERVERS)
 	for ip in ${arr[@]}
     do
-		scp hosts.sh root@$ip:/root
-		scp sshd_config.sh root@$ip:/root
+		scp ${THIS_PATH}/hosts.sh root@$ip:/root
+		scp ${THIS_PATH}/sshd_config.sh root@$ip:/root
 		ssh root@$ip /bin/bash /root/hosts.sh "$hosts"
 		ssh root@$ip /bin/bash /root/sshd_config.sh
     done
 
 	#修改本机host
-	/bin/bash hosts.sh "$hosts"
+	/bin/bash ${THIS_PATH}/hosts.sh "$hosts"
 	#修改本机sshd_config
-	/bin/bash sshd_config.sh
+	/bin/bash ${THIS_PATH}/sshd_config.sh
 }
 
 
