@@ -1105,6 +1105,8 @@ done
 
 d、执行tail -F test.log 看看，看了以后就可以关了，因为flume里会去执行这个命令。
 
+#########完成
+flume本身不需要更任何配置，只需要配置数据源和接收者这个配置文件。
 
 ########## 执行命令
 /home/hadoop/apps/flume/bin/flume-ng agent -c /home/hadoop/apps/flume/conf -f /home/hadoop/apps/flume/conf/tail-hdfs.conf -n a1
