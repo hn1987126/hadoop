@@ -218,6 +218,10 @@ make && make install
 cp php.ini-production /usr/local/php/etc/php.ini
 cp /usr/local/php/etc/php-fpm.conf.default /usr/local/php/etc/php-fpm.conf
 cp /usr/local/php/etc/php-fpm.d/www.conf.default /usr/local/php/etc/php-fpm.d/www.conf
+# 这是用root来启动php
+sed -i "/^user = nobody/c\user = root" /usr/local/php/etc/php-fpm.d/www.conf
+sed -i "/^group = nobody/c\group = root" /usr/local/php/etc/php-fpm.d/www.conf
+nohup /usr/local/php/sbin/php-fpm -R >/dev/null 2>&1 &
 # 启动 /usr/local/php/sbin/php-fpm
 # 查看安装了哪些模块
 /usr/local/php/bin/php -m
