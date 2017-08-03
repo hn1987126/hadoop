@@ -197,6 +197,7 @@ echo 2 >zkdata/myid
 查看自己是不是leader
 /home/hadoop/apps/zookeeper-3.4.5/bin/zkServer.sh status
 必须要里面显示leader或follower才证明是成功
+用jps查看  能看到 QuorumPeerMain
 
 
 #关防火墙
