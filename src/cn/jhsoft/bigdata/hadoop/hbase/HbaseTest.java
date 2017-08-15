@@ -47,7 +47,8 @@ public class HbaseTest {
 	@Before
 	public void init() throws Exception {
 		config = HBaseConfiguration.create();// 配置
-		config.set("hbase.zookeeper.quorum", "s2,s3");// zookeeper地址
+		//config.set("hbase.zookeeper.quorum", "s2,s3");// zookeeper地址
+		config.set("hbase.zookeeper.quorum", "river1,river2,river3");// zookeeper地址
 		config.set("hbase.zookeeper.property.clientPort", "2181");// zookeeper端口
 		connection = ConnectionFactory.createConnection(config);
 		table = connection.getTable(TableName.valueOf("test3"));

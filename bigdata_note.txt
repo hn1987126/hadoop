@@ -1651,6 +1651,44 @@ scan 'test1',{COLUMNS=>'namenode:sex'}
 
 
 
+##########################################################################
+########## phoenix
+##########################################################################
+########### phoenix 用法。（在hbase之外再封一层基于sql的语法来操作）
+下载 phoenix ，从apache官网 https://archive.apache.org/dist/phoenix/ 选择对应的不同的版本。
+mv apache-phoenix-4.8.1-HBase-0.98-bin.tar.gz soft/
+tar -vxzf soft/apache-phoenix-4.8.1-HBase-0.98-bin.tar.gz -C apps
+cd apps
+mv apache-phoenix-4.8.1-HBase-0.98-bin/ phoenix
+
+配置：
+cp /home/hadoop/apps/phoenix/phoenix-core-4.8.1-*.jar /home/hadoop/apps/hbase/lib/
+scp /home/hadoop/apps/phoenix/phoenix-core-4.8.1-*.jar /home/hadoop/apps/hbase/lib/
+phoenix-core-.x.jar 拷贝到hadoop 集群各个节点HBase 的lib目录下。
+
+重启hbase:【需要先启动zookeeper和hdfs】
+zkServer.sh start
+start-dfs.sh
+/home/hadoop/apps/hbase/bin/stop-hbase.sh
+/home/hadoop/apps/hbase/bin/start-hbase.sh
+
+进入phoenix命令行：
+/home/hadoop/apps/phoenix/bin/sqlline.py s1:2181     【需要主zookeeper机器的名称和在那台机器启动】
+
+查询所有表：
+!tables
+创建表：
+create table IF NOT EXISTS test.Person (IDCardNum INTEGER not null primary key, Name varchar(20),Age INTEGER);
+插入数据到表：
+upsert into test.Person (IDCardNum,Name,Age) values (100,'小明',12);
+查询：
+select * from test.Person;
+
+参考文档：
+https://segmentfault.com/a/1190000002936080
+http://www.cnblogs.com/laov/p/4137136.html
+
+
 
 
 ##################
