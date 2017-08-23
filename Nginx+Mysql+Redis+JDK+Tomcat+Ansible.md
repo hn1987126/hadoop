@@ -160,6 +160,7 @@ mkdir -p /usr/local/redis/bin
 mkdir -p /usr/local/redis/etc
 mv /usr/local/src/redis-3.2.9/redis.conf /usr/local/redis/etc
 mv redis-benchmark redis-check-aof redis-cli redis-server /usr/local/redis/bin
+sed -i "/^datadir=/c\datadir=/usr/local/mysql/data" /etc/my.cnf
 #vim /usr/local/redis/etc/redis.conf  把daemonize属性改为yes
 #requirepass foobared 前面的注释去掉并把foobared改为如jd.com密码
 #启动
