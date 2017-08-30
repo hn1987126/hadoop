@@ -1,6 +1,10 @@
 apache旗下各软件下载
 https://archive.apache.org/dist/
 
+maven项目运行：
+maven clean install -Dmaven.test.skip=true
+添加到idea里时，需要把前面的maven去掉。
+
 1、linux的两个命令：
 #### 重启网络
 /etc/rc.d/init.d/network restart
