@@ -69,6 +69,16 @@ netstat -tlpn
 find / -name "nginx"
 which nginx
 
+################ grep
+grep -rn 'static.pdp.jcloud.com' *
+grep 'static.pdp.jcloud.com' . -rl
+
+#先查下有没有
+cd /export/App/  && grep 'pdp.jcloud.com' -rs ./*
+
+#替换：把static.pdp.jcloud.com 替换为 static.pdp.sq.js.cegn.cn
+sed -i 's/pdp.jcloud.com/pdp.sq.js.cegn.cn/g' `grep 'pdp.jcloud.com' . -rl`
+
 ################# shell中获取日期：date
 昨天 date -d '-1 day'
 格式化日期 date +%Y-%m-%d
