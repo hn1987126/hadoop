@@ -18,6 +18,7 @@ clean package -f pom-war.xml -P pro -Dmaven.test.skip=true
 
 #### 小技巧
 cd -  是回到上次的目录
+\ cp -rf a.txt ../a.txt    最前面的 \ 是指不走linux命令里的别名，也就是在覆盖时，不管任何情况下都不会提示 是否要覆盖。
 
 #### 执行脚本前加上"."代表在当前进程执行如
 . /bin/bash install.sh
