@@ -1,9 +1,16 @@
 apache旗下各软件下载
 https://archive.apache.org/dist/
 
-maven项目运行：
+###maven项目运行：
 maven clean install -Dmaven.test.skip=true
-添加到idea里时，需要把前面的maven去掉。
+#添加到idea里时，需要把前面的maven去掉。
+#打成 jar包 并上传和部署 (最后的 -Dmaven.test.skip=true，是指打包时不编译 test类)
+clean package -P pro wagon:upload-single wagon:sshexec -Dmaven.test.skip=true
+#只打包，不上传部署
+clean package -P pro -Dmaven.test.skip=true
+#打成 war包
+clean package -f pom-war.xml -P pro -Dmaven.test.skip=true
+
 
 1、linux的两个命令：
 #### 重启网络
