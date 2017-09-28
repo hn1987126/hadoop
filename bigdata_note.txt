@@ -45,6 +45,11 @@ killall -9 java
 GRANT ALL ON *.* to root@'%' IDENTIFIED BY '123456';
 FLUSH PRIVILEGES;
 
+################# java打jar包：
+/export/servers/jdk1.8/bin/jar -cvf bds-rest-dbus.war bds-rest-dbus
+解包：
+/export/servers/jdk1.8/bin/jar -xvf bds-rest-dbus.war
+
 ################# tail -f xxx.log 中 -f 与 -F 的区别：
 -f 是监听指定的那文件的 iNode信息，就是文件本身，即使他重命名走了，也会监听他。
 -F 他监听的就是纯文件名，不是iNode，重命名走了，就不管了，只找那文件名的文件。
